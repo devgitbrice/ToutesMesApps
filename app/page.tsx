@@ -20,6 +20,9 @@ const DEFAULT_FILTERS: FiltersState = {
 export default function Home() {
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  
+  // État pour le mode nuit
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const filteredProjects = useMemo(() => {
     const activeTypes = (Object.entries(filters.types) as [ProjectType, boolean][])
@@ -51,14 +54,36 @@ export default function Home() {
   }, [activeIndex]);
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div 
+      className={`min-h-screen transition-colors duration-300 ${
+        isDarkMode ? "bg-slate-950 text-white" : "bg-neutral-50 text-neutral-900"
+      }`}
+    >
       {/* Header */}
-      <header className="border-b bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-5">
-          <h1 className="text-xl font-bold">ToutesMesApps</h1>
-          <p className="mt-1 text-sm text-neutral-600">
-            Mes projets en cartes + filtres + swipe fullscreen
-          </p>
+      <header 
+        className={`border-b transition-colors duration-300 ${
+          isDarkMode ? "border-slate-800 bg-slate-950" : "bg-white border-neutral-200"
+        }`}
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
+          <div>
+            <h1 className="text-xl font-bold">ToutesMesApps</h1>
+            <p className={`mt-1 text-sm ${isDarkMode ? "text-slate-400" : "text-neutral-600"}`}>
+              Mes projets en cartes + filtres + swipe fullscreen
+            </p>
+          </div>
+          
+          {/* Bouton Toggle Mode Nuit */}
+          <button
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              isDarkMode 
+                ? "bg-slate-800 text-yellow-300 hover:bg-slate-700" 
+                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+            }`}
+          >
+            {isDarkMode ? "🌙 Nuit" : "☀️ Jour"}
+          </button>
         </div>
       </header>
 
@@ -70,12 +95,19 @@ export default function Home() {
           onChange={setFilters}
           total={PROJECTS.length}
           shown={filteredProjects.length}
+          isDarkMode={isDarkMode} // <-- PASSE L'INFO AU COMPOSANT
         />
 
         {/* Grille centre (4 max par rangée) */}
         <section>
           {filteredProjects.length === 0 ? (
-            <div className="rounded-2xl border bg-white p-6 text-sm text-neutral-700 shadow-sm">
+            <div 
+              className={`rounded-2xl border p-6 text-sm shadow-sm transition-colors ${
+                isDarkMode 
+                  ? "bg-slate-900 border-slate-800 text-slate-300" 
+                  : "bg-white border-neutral-200 text-neutral-700"
+              }`}
+            >
               Aucun projet ne correspond aux filtres.
             </div>
           ) : (
@@ -85,6 +117,7 @@ export default function Home() {
                   key={p.id}
                   project={p}
                   onClick={() => setActiveIndex(i)}
+                  isDarkMode={isDarkMode} // <-- PASSE L'INFO AU COMPOSANT
                 />
               ))}
             </div>

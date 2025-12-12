@@ -1,5 +1,3 @@
-"use client";
-
 import type { ProjectCategory, ProjectType } from "@/lib/projects";
 
 type FiltersState = {
@@ -7,107 +5,106 @@ type FiltersState = {
   categories: Record<ProjectCategory, boolean>;
 };
 
+interface FiltersProps {
+  value: FiltersState;
+  onChange: (value: FiltersState) => void;
+  total: number;
+  shown: number;
+  isDarkMode: boolean; // <-- NOUVELLE PROP
+}
+
 export default function Filters({
   value,
   onChange,
   total,
   shown,
-}: {
-  value: FiltersState;
-  onChange: (next: FiltersState) => void;
-  total: number;
-  shown: number;
-}) {
-  function toggleType(type: ProjectType) {
+  isDarkMode,
+}: FiltersProps) {
+  const toggleType = (type: ProjectType) => {
     onChange({
       ...value,
       types: { ...value.types, [type]: !value.types[type] },
     });
-  }
+  };
 
-  function toggleCategory(category: ProjectCategory) {
+  const toggleCategory = (cat: ProjectCategory) => {
     onChange({
       ...value,
-      categories: {
-        ...value.categories,
-        [category]: !value.categories[category],
-      },
+      categories: { ...value.categories, [cat]: !value.categories[cat] },
     });
-  }
+  };
 
-  function reset() {
-    onChange({
-      types: { pro: false, perso: false },
-      categories: { formation: false, appartement: false },
-    });
-  }
+  // Définition des classes CSS conditionnelles
+  const containerClasses = isDarkMode
+    ? "rounded-2xl border border-slate-800 bg-slate-900 p-5 transition-colors" // Mode nuit : fond foncé
+    : "rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition-colors"; // Mode jour : fond blanc
+
+  const titleClasses = isDarkMode ? "text-white" : "text-neutral-900";
+  const textClasses = isDarkMode ? "text-slate-300" : "text-neutral-700";
+  const subTitleClasses = isDarkMode ? "text-slate-500" : "text-neutral-500";
 
   return (
-    <aside className="sticky top-6 h-fit rounded-2xl border bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
+    <div className={containerClasses}>
+      <h2 className={`text-lg font-semibold ${titleClasses}`}>Filtres</h2>
+      <div className={`mb-4 text-sm ${isDarkMode ? "text-slate-400" : "text-neutral-600"}`}>
+        {shown} / {total} projets
+      </div>
+
+      <div className="space-y-6">
+        {/* Section Type */}
         <div>
-          <h2 className="text-base font-semibold">Filtres</h2>
-          <p className="mt-1 text-sm text-neutral-600">
-            {shown} / {total} projets
-          </p>
+          <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
+            Type
+          </h3>
+          <div className="space-y-2">
+            <label className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
+              <input
+                type="checkbox"
+                checked={value.types.pro}
+                onChange={() => toggleType("pro")}
+                className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+              />
+              Pro
+            </label>
+            <label className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
+              <input
+                type="checkbox"
+                checked={value.types.perso}
+                onChange={() => toggleType("perso")}
+                className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+              />
+              Perso
+            </label>
+          </div>
         </div>
 
-        <button
-          onClick={reset}
-          className="rounded-lg border px-3 py-1.5 text-sm hover:bg-neutral-50"
-          type="button"
-        >
-          Reset
-        </button>
+        {/* Section Catégories */}
+        <div>
+          <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
+            Projets
+          </h3>
+          <div className="space-y-2">
+            <label className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
+              <input
+                type="checkbox"
+                checked={value.categories.formation}
+                onChange={() => toggleCategory("formation")}
+                className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+              />
+              Formation
+            </label>
+            <label className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
+              <input
+                type="checkbox"
+                checked={value.categories.appartement}
+                onChange={() => toggleCategory("appartement")}
+                className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+              />
+              Appartement
+            </label>
+          </div>
+        </div>
       </div>
-
-      <div className="mt-5">
-        <p className="text-sm font-semibold text-neutral-800">Type</p>
-
-        <label className="mt-2 flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={value.types.pro}
-            onChange={() => toggleType("pro")}
-            className="h-4 w-4"
-          />
-          Pro
-        </label>
-
-        <label className="mt-2 flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={value.types.perso}
-            onChange={() => toggleType("perso")}
-            className="h-4 w-4"
-          />
-          Perso
-        </label>
-      </div>
-
-      <div className="mt-5">
-        <p className="text-sm font-semibold text-neutral-800">Projets</p>
-
-        <label className="mt-2 flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={value.categories.formation}
-            onChange={() => toggleCategory("formation")}
-            className="h-4 w-4"
-          />
-          Formation
-        </label>
-
-        <label className="mt-2 flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={value.categories.appartement}
-            onChange={() => toggleCategory("appartement")}
-            className="h-4 w-4"
-          />
-          Appartement
-        </label>
-      </div>
-    </aside>
+    </div>
   );
 }

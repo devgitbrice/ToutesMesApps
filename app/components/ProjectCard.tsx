@@ -1,78 +1,64 @@
-// app/components/ProjectCard.tsx
 import type { Project } from "@/lib/projects";
 
-/**
- * Libellé lisible pour le statut
- */
-function statusLabel(status?: Project["status"]) {
-  if (status === "idea") return "Idée";
-  if (status === "wip") return "En cours";
-  if (status === "done") return "Terminé";
-  return "";
+interface ProjectCardProps {
+  project: Project;
+  onClick: () => void;
+  isDarkMode: boolean; // <-- NOUVELLE PROP
 }
 
-export default function ProjectCard({
-  project,
-  onClick,
-}: {
-  project: Project;
-  onClick?: () => void;
-}) {
+export default function ProjectCard({ project, onClick, isDarkMode }: ProjectCardProps) {
+  
+  // Classes conditionnelles pour la carte
+  const cardClasses = isDarkMode
+    ? "group relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-5 transition-all hover:border-slate-700 hover:shadow-md cursor-pointer" // Mode nuit
+    : "group relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition-all hover:border-neutral-300 hover:shadow-md cursor-pointer"; // Mode jour
+
+  const titleClasses = isDarkMode
+    ? "text-white group-hover:text-blue-400"
+    : "text-neutral-900 group-hover:text-blue-600";
+    
+  const descriptionClasses = isDarkMode ? "text-slate-300" : "text-neutral-600";
+  
+  // Style des badges de catégorie
+  const badgeClasses = isDarkMode
+    ? "bg-slate-800 text-slate-200 border border-slate-700"
+    : "bg-neutral-100 text-neutral-600";
+
+  // Style du badge Type (Pro/Perso)
+  const typeBadgeBase = "ml-auto rounded-full px-2.5 py-0.5 text-xs font-bold tracking-wide uppercase";
+  const typeBadgeClasses = isDarkMode
+      ? project.type === 'pro' ? "bg-blue-950 text-blue-200 border border-blue-800" : "bg-purple-950 text-purple-200 border border-purple-800"
+      : project.type === 'pro' ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800";
+
+
   return (
-    <article
-      onClick={onClick}
-      className="
-        cursor-pointer
-        rounded-2xl
-        border
-        bg-white
-        p-4
-        shadow-sm
-        transition
-        hover:-translate-y-1
-        hover:shadow-md
-        active:scale-[0.98]
-      "
-    >
-      {/* Conteneur carré */}
-      <div className="aspect-square w-full rounded-xl bg-gradient-to-br from-neutral-100 to-neutral-200 p-4">
-        <div className="flex h-full flex-col justify-between">
-          {/* Haut */}
-          <div>
-            <h3 className="text-base font-semibold leading-tight">
-              {project.title}
-            </h3>
-
-            {project.description && (
-              <p className="mt-2 text-sm text-neutral-600 line-clamp-3">
-                {project.description}
-              </p>
-            )}
-          </div>
-
-          {/* Bas : tags */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="rounded-full bg-neutral-900 px-2.5 py-1 text-xs font-medium text-white">
-              {project.type === "pro" ? "Pro" : "Perso"}
-            </span>
-
-            {project.status && (
-              <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800">
-                {statusLabel(project.status)}
-              </span>
-            )}
-
-            {project.categories.map((c) => (
-              <span
-                key={c}
-                className="rounded-full border px-2.5 py-1 text-xs font-medium text-neutral-700"
-              >
-                {c === "formation" ? "Formation" : "Appartement"}
-              </span>
-            ))}
-          </div>
+    <div className={cardClasses} onClick={onClick}>
+      <div>
+        <div className="flex items-start justify-between mb-3">
+          <h3 className={`text-lg font-semibold transition-colors ${titleClasses}`}>
+            {project.title}
+          </h3>
+           {/* Badge de type (Pro/Perso) */}
+          <span className={`${typeBadgeBase} ${typeBadgeClasses}`}>
+            {project.type}
+          </span>
         </div>
+        <p className={`mb-4 line-clamp-3 text-sm ${descriptionClasses}`}>
+          {project.description}
+        </p>
       </div>
-    </article>
+
+      {/* Footer avec les catégories */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {project.categories.map((cat) => (
+          <span
+            key={cat}
+            className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${badgeClasses}`}
+          >
+            {cat}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }

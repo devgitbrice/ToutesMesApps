@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base globale (optionnel) */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+/* Empêche le scroll quand le viewer fullscreen est ouvert */
+body.viewer-open {
+  overflow: hidden;
+}

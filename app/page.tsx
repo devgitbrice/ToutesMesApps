@@ -4,54 +4,147 @@ import { useEffect, useMemo, useState } from "react";
 import Filters from "@/app/components/Filters";
 import ProjectCard from "@/app/components/ProjectCard";
 import ProjectViewer from "@/app/components/ProjectViewer";
-import { PROJECTS } from "@/lib/projects";
-import type { ProjectCategory, ProjectType } from "@/lib/projects";
+import type { Project } from "@/lib/projects";
 
 type FiltersState = {
-  types: Record<ProjectType, boolean>;
-  categories: Record<ProjectCategory, boolean>;
+  types: Record<string, boolean>;
+  categories: Record<string, boolean>;
 };
 
 const DEFAULT_FILTERS: FiltersState = {
-  types: { pro: false, perso: false },
-  categories: { formation: false, appartement: false },
+  types: {},
+  categories: {},
 };
 
 export default function Home() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  
-  // État pour le mode nuit
   const [isDarkMode, setIsDarkMode] = useState(false);
 
+  // --- CHARGEMENT ---
+  useEffect(() => {
+    async function loadProjects() {
+      try {
+        const res = await fetch("/api/projects");
+        if (!res.ok) throw new Error("Erreur réseau");
+        const data = await res.json();
+        setProjects(data);
+      } catch (e) {
+        console.error("Impossible de charger les projets", e);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadProjects();
+  }, []);
+
+  // --- LISTES DYNAMIQUES ---
+  const availableTypes = useMemo(() => {
+    const types = new Set(projects.map((p) => p.type).filter(Boolean));
+    return Array.from(types).sort();
+  }, [projects]);
+
+  const availableCategories = useMemo(() => {
+    const cats = new Set(projects.flatMap((p) => p.categories).filter(Boolean));
+    return Array.from(cats).sort();
+  }, [projects]);
+
+  // --- 1. CRÉATION DE PROJET (NOUVEAU) ---
+  const handleCreateProject = async () => {
+    // 1. Création d'un objet temporaire
+    const newProject: Project = {
+      id: "temp-" + Date.now(), // ID temporaire
+      title: "Nouveau Projet",
+      description: "",
+      type: "Perso",
+      categories: [],
+      githubLink: "",
+      siteLink: "",
+    };
+
+    // 2. On l'ajoute à la liste et ON L'OUVRE DIRECTEMENT
+    const newIndex = projects.length; // Il sera à la fin du tableau
+    setProjects((prev) => [...prev, newProject]);
+    setActiveIndex(newIndex); // <-- Ouverture immédiate du Viewer
+
+    // 3. Sauvegarde en base de données
+    try {
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newProject),
+      });
+      
+      if (!res.ok) throw new Error("Erreur création");
+      
+      const data = await res.json();
+
+      // 4. On met à jour l'ID temporaire avec le vrai ID Airtable
+      setProjects((prev) =>
+        prev.map((p) => (p.id === newProject.id ? { ...p, id: data.id } : p))
+      );
+    } catch (e) {
+      console.error("Erreur lors de la création", e);
+      alert("Erreur lors de la création du projet sur Airtable.");
+    }
+  };
+
+  // --- 2. MISE À JOUR ---
+  const handleUpdateProject = async (updatedProject: Project) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === updatedProject.id ? updatedProject : p))
+    );
+
+    // Si c'est un projet temporaire (pas encore sauvegardé), on attend
+    if (updatedProject.id.startsWith("temp-")) return;
+
+    try {
+      await fetch("/api/projects", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedProject),
+      });
+    } catch (e) {
+      console.error("Erreur sauvegarde", e);
+    }
+  };
+
+  // --- FILTRAGE ---
   const filteredProjects = useMemo(() => {
-    const activeTypes = (Object.entries(filters.types) as [ProjectType, boolean][])
-      .filter(([, v]) => v)
-      .map(([k]) => k);
+    const activeTypes = Object.entries(filters.types)
+      .filter(([, isChecked]) => isChecked)
+      .map(([type]) => type);
 
-    const activeCats = (
-      Object.entries(filters.categories) as [ProjectCategory, boolean][]
-    )
-      .filter(([, v]) => v)
-      .map(([k]) => k);
+    const activeCats = Object.entries(filters.categories)
+      .filter(([, isChecked]) => isChecked)
+      .map(([cat]) => cat);
 
-    return PROJECTS.filter((p) => {
+    return projects.filter((p) => {
       const typeOk = activeTypes.length === 0 || activeTypes.includes(p.type);
       const catOk =
         activeCats.length === 0 ||
         activeCats.some((c) => p.categories.includes(c));
       return typeOk && catOk;
     });
-  }, [filters]);
+  }, [filters, projects]);
 
-  // Bloquer le scroll du body quand le viewer est ouvert
   useEffect(() => {
     if (activeIndex !== null) {
       document.body.classList.add("viewer-open");
-      return;
+    } else {
+      document.body.classList.remove("viewer-open");
     }
-    document.body.classList.remove("viewer-open");
   }, [activeIndex]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-neutral-900 text-white">
+        Chargement...
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -59,7 +152,6 @@ export default function Home() {
         isDarkMode ? "bg-slate-950 text-white" : "bg-neutral-50 text-neutral-900"
       }`}
     >
-      {/* Header */}
       <header 
         className={`border-b transition-colors duration-300 ${
           isDarkMode ? "border-slate-800 bg-slate-950" : "bg-white border-neutral-200"
@@ -73,32 +165,41 @@ export default function Home() {
             </p>
           </div>
           
-          {/* Bouton Toggle Mode Nuit */}
-          <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              isDarkMode 
-                ? "bg-slate-800 text-yellow-300 hover:bg-slate-700" 
-                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-            }`}
-          >
-            {isDarkMode ? "🌙 Nuit" : "☀️ Jour"}
-          </button>
+          <div className="flex gap-3">
+            {/* BOUTON AJOUTER */}
+            <button
+              onClick={handleCreateProject}
+              className="rounded-full bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-500 shadow-md hover:shadow-lg active:scale-95"
+            >
+              + Nouveau
+            </button>
+
+            {/* BOUTON DARK MODE */}
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                isDarkMode 
+                  ? "bg-slate-800 text-yellow-300 hover:bg-slate-700" 
+                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+              }`}
+            >
+              {isDarkMode ? "🌙 Nuit" : "☀️ Jour"}
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Layout: sidebar + grid */}
       <main className="mx-auto grid max-w-6xl gap-6 px-4 py-6 md:grid-cols-[260px_1fr]">
-        {/* Sidebar filtres */}
         <Filters
           value={filters}
           onChange={setFilters}
-          total={PROJECTS.length}
+          total={projects.length}
           shown={filteredProjects.length}
-          isDarkMode={isDarkMode} // <-- PASSE L'INFO AU COMPOSANT
+          isDarkMode={isDarkMode}
+          availableTypes={availableTypes}
+          availableCategories={availableCategories}
         />
 
-        {/* Grille centre (4 max par rangée) */}
         <section>
           {filteredProjects.length === 0 ? (
             <div 
@@ -117,7 +218,7 @@ export default function Home() {
                   key={p.id}
                   project={p}
                   onClick={() => setActiveIndex(i)}
-                  isDarkMode={isDarkMode} // <-- PASSE L'INFO AU COMPOSANT
+                  isDarkMode={isDarkMode}
                 />
               ))}
             </div>
@@ -125,12 +226,14 @@ export default function Home() {
         </section>
       </main>
 
-      {/* Viewer fullscreen + swipe trackpad */}
       {activeIndex !== null && (
         <ProjectViewer
           projects={filteredProjects}
           index={activeIndex}
           onClose={() => setActiveIndex(null)}
+          onUpdate={handleUpdateProject}
+          availableTypes={availableTypes}
+          availableCategories={availableCategories}
         />
       )}
     </div>

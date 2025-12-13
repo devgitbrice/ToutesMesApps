@@ -1,8 +1,6 @@
-import type { ProjectCategory, ProjectType } from "@/lib/projects";
-
 type FiltersState = {
-  types: Record<ProjectType, boolean>;
-  categories: Record<ProjectCategory, boolean>;
+  types: Record<string, boolean>;
+  categories: Record<string, boolean>;
 };
 
 interface FiltersProps {
@@ -10,7 +8,9 @@ interface FiltersProps {
   onChange: (value: FiltersState) => void;
   total: number;
   shown: number;
-  isDarkMode: boolean; // <-- NOUVELLE PROP
+  isDarkMode: boolean;
+  availableTypes: string[];        // <-- Reçoit la liste d'Airtable
+  availableCategories: string[];   // <-- Reçoit la liste d'Airtable
 }
 
 export default function Filters({
@@ -19,25 +19,28 @@ export default function Filters({
   total,
   shown,
   isDarkMode,
+  availableTypes,
+  availableCategories,
 }: FiltersProps) {
-  const toggleType = (type: ProjectType) => {
+  
+  // Fonction générique pour cocher/décocher
+  const toggleType = (type: string) => {
     onChange({
       ...value,
       types: { ...value.types, [type]: !value.types[type] },
     });
   };
 
-  const toggleCategory = (cat: ProjectCategory) => {
+  const toggleCategory = (cat: string) => {
     onChange({
       ...value,
       categories: { ...value.categories, [cat]: !value.categories[cat] },
     });
   };
 
-  // Définition des classes CSS conditionnelles
   const containerClasses = isDarkMode
-    ? "rounded-2xl border border-slate-800 bg-slate-900 p-5 transition-colors" // Mode nuit : fond foncé
-    : "rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition-colors"; // Mode jour : fond blanc
+    ? "rounded-2xl border border-slate-800 bg-slate-900 p-5 transition-colors h-fit"
+    : "rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition-colors h-fit";
 
   const titleClasses = isDarkMode ? "text-white" : "text-neutral-900";
   const textClasses = isDarkMode ? "text-slate-300" : "text-neutral-700";
@@ -51,57 +54,48 @@ export default function Filters({
       </div>
 
       <div className="space-y-6">
-        {/* Section Type */}
+        {/* Section TYPES Dynamique */}
         <div>
           <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
             Type
           </h3>
           <div className="space-y-2">
-            <label className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
-              <input
-                type="checkbox"
-                checked={value.types.pro}
-                onChange={() => toggleType("pro")}
-                className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-              />
-              Pro
-            </label>
-            <label className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
-              <input
-                type="checkbox"
-                checked={value.types.perso}
-                onChange={() => toggleType("perso")}
-                className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-              />
-              Perso
-            </label>
+            {availableTypes.length === 0 && <p className="text-xs italic opacity-50">Aucun type</p>}
+            
+            {availableTypes.map((type) => (
+              <label key={type} className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
+                <input
+                  type="checkbox"
+                  checked={!!value.types[type]} // "!!" convertit undefined en false
+                  onChange={() => toggleType(type)}
+                  className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                />
+                {/* On met la première lettre en majuscule pour faire joli */}
+                <span className="capitalize">{type}</span>
+              </label>
+            ))}
           </div>
         </div>
 
-        {/* Section Catégories */}
+        {/* Section CATÉGORIES Dynamique */}
         <div>
           <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
-            Projets
+            Catégories
           </h3>
           <div className="space-y-2">
-            <label className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
-              <input
-                type="checkbox"
-                checked={value.categories.formation}
-                onChange={() => toggleCategory("formation")}
-                className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-              />
-              Formation
-            </label>
-            <label className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
-              <input
-                type="checkbox"
-                checked={value.categories.appartement}
-                onChange={() => toggleCategory("appartement")}
-                className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-              />
-              Appartement
-            </label>
+            {availableCategories.length === 0 && <p className="text-xs italic opacity-50">Aucune catégorie</p>}
+
+            {availableCategories.map((cat) => (
+              <label key={cat} className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
+                <input
+                  type="checkbox"
+                  checked={!!value.categories[cat]}
+                  onChange={() => toggleCategory(cat)}
+                  className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="capitalize">{cat}</span>
+              </label>
+            ))}
           </div>
         </div>
       </div>

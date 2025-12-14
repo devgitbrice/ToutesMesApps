@@ -17,7 +17,7 @@ import {
 
 export default function Page() {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [activeProject, setActiveProject] = useState<Project | null>(null);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +44,6 @@ export default function Page() {
         if (!res.ok) throw new Error("Erreur API");
 
         const raw = await res.json();
-
         if (cancelled) return;
 
         // ✅ NORMALISATION STRICTE
@@ -165,12 +164,12 @@ export default function Page() {
                 Aucun projet ne correspond aux filtres.
               </div>
             ) : (
-              filteredProjects.map((p) => (
+              filteredProjects.map((p, i) => (
                 <ProjectCard
                   key={p.id}
                   project={p}
                   isDarkMode={isDarkMode}
-                  onClick={() => setActiveProject(p)}
+                  onClick={() => setActiveIndex(i)}
                 />
               ))
             )}
@@ -179,11 +178,18 @@ export default function Page() {
       </div>
 
       {/* VIEWER */}
-      {activeProject && (
+      {activeIndex !== null && (
         <ProjectViewer
-          project={activeProject}
-          onClose={() => setActiveProject(null)}
-          isDarkMode={isDarkMode}
+          projects={filteredProjects}
+          index={activeIndex}
+          onClose={() => setActiveIndex(null)}
+          onUpdate={(updated) => {
+            setProjects((prev) =>
+              prev.map((p) => (p.id === updated.id ? updated : p))
+            );
+          }}
+          availableTypes={availableTypes}
+          availableCategories={availableCategories}
         />
       )}
     </div>

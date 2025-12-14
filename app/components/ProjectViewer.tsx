@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Project } from "@/lib/projects";
+import type { Project, ProjectCategory, ProjectType } from "@/lib/projects";
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -44,8 +44,8 @@ function ProjectSlide({
 
   audio: { loading: boolean; playing: boolean; projectId: string | null };
 
-  availableTypes: string[];
-  availableCategories: string[];
+  availableTypes: ProjectType[];
+  availableCategories: ProjectCategory[];
 
   autoMode: boolean;
   onToggleAuto: (payload: {
@@ -62,19 +62,31 @@ function ProjectSlide({
   const [siteLink, setSiteLink] = useState((project as any).siteLink || "");
 
   // Airtable est sensible aux majuscules : "Perso" par défaut
-  const [selectedType, setSelectedType] = useState<string>((project as any).type || "Perso");
-  const [selectedCats, setSelectedCats] = useState<string[]>(
-    Array.isArray((project as any).categories) ? (project as any).categories : []
+  const [selectedType, setSelectedType] = useState<ProjectType>(
+    ((project as any).type as ProjectType) || ("Perso" as ProjectType)
   );
+
+  const [selectedCats, setSelectedCats] = useState<ProjectCategory[]>(
+    Array.isArray((project as any).categories)
+      ? ((project as any).categories as ProjectCategory[])
+      : []
+  );
+
   const [newCatName, setNewCatName] = useState("");
 
   // 1. SÉCURITÉ
-  const safeTypes = Array.isArray(availableTypes) ? availableTypes : [];
-  const safeCats = Array.isArray(availableCategories) ? availableCategories : [];
+  const safeTypes: ProjectType[] = Array.isArray(availableTypes) ? availableTypes : [];
+  const safeCats: ProjectCategory[] = Array.isArray(availableCategories) ? availableCategories : [];
 
   // 2. FUSION INTELLIGENTE
-  const allDisplayTypes = Array.from(new Set([...safeTypes, "Pro", "Perso"]));
-  const allDisplayCats = Array.from(new Set([...safeCats, ...selectedCats])).sort();
+  const allDisplayTypes: ProjectType[] = Array.from(
+    new Set<ProjectType>([...safeTypes, "Pro" as ProjectType, "Perso" as ProjectType])
+  );
+
+  // Important : garder le typage ProjectCategory pour éviter le "string vs ProjectCategory"
+  const allDisplayCats: ProjectCategory[] = Array.from(
+    new Set<ProjectCategory>([...safeCats, ...selectedCats])
+  ).sort((a, b) => String(a).localeCompare(String(b)));
 
   // 3. SAUVEGARDE
   const debouncedTitle = useDebounce(title, 1000);
@@ -83,25 +95,25 @@ function ProjectSlide({
   const debouncedSite = useDebounce(siteLink, 1000);
 
   useEffect(() => {
-    const updatedProject = {
+    const updatedProject: Project = {
       ...project,
       title: debouncedTitle,
       description: debouncedDesc,
       githubLink: debouncedGithub,
       siteLink: debouncedSite,
       type: selectedType as any,
-      categories: selectedCats,
+      categories: selectedCats as any,
       // ✅ favorite n'est pas touché ici
     };
 
     if (JSON.stringify(updatedProject) !== JSON.stringify(project)) {
-      onUpdate(updatedProject as Project);
+      onUpdate(updatedProject);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedTitle, debouncedDesc, debouncedGithub, debouncedSite, selectedType, selectedCats]);
 
   // Actions
-  const toggleCategory = (cat: string) => {
+  const toggleCategory = (cat: ProjectCategory) => {
     if (selectedCats.includes(cat)) {
       setSelectedCats(selectedCats.filter((c) => c !== cat));
     } else {
@@ -111,7 +123,17 @@ function ProjectSlide({
 
   const handleAddCategory = () => {
     if (!newCatName.trim()) return;
-    const cat = newCatName.trim();
+    const catRaw = newCatName.trim();
+
+    /**
+     * NOTE:
+     * Si ProjectCategory est un union strict (ex: "ai" | "web" | ...),
+     * ajouter une nouvelle valeur "hors union" est impossible sans l’étendre.
+     * Ici on assume que tu acceptes des catégories “custom” côté Airtable
+     * => cast en ProjectCategory pour satisfaire TS.
+     */
+    const cat = catRaw as unknown as ProjectCategory;
+
     if (!selectedCats.includes(cat)) {
       setSelectedCats([...selectedCats, cat]);
     }
@@ -270,7 +292,7 @@ function ProjectSlide({
           <div className="flex flex-wrap justify-center gap-3">
             {allDisplayTypes.map((type) => (
               <button
-                key={type}
+                key={String(type)}
                 onClick={() => setSelectedType(type)}
                 className={`rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-widest transition-all ${
                   selectedType === type
@@ -279,7 +301,7 @@ function ProjectSlide({
                 }`}
                 type="button"
               >
-                {type}
+                {String(type)}
               </button>
             ))}
           </div>
@@ -294,7 +316,7 @@ function ProjectSlide({
               const isActive = selectedCats.includes(cat);
               return (
                 <button
-                  key={cat}
+                  key={String(cat)}
                   onClick={() => toggleCategory(cat)}
                   className={`rounded-full border px-5 py-2 text-sm transition-all hover:scale-105 active:scale-95 ${
                     isActive
@@ -303,7 +325,7 @@ function ProjectSlide({
                   }`}
                   type="button"
                 >
-                  {cat}
+                  {String(cat)}
                 </button>
               );
             })}
@@ -347,8 +369,8 @@ export default function ProjectViewer({
   index: number;
   onClose: () => void;
   onUpdate: (p: Project) => void;
-  availableTypes: string[];
-  availableCategories: string[];
+  availableTypes: ProjectType[];
+  availableCategories: ProjectCategory[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -516,7 +538,6 @@ export default function ProjectViewer({
       try {
         await a.play();
       } catch (err: any) {
-        // ignore AbortError si on a stoppé entre temps
         if (err?.name === "AbortError") return;
         throw err;
       }
@@ -526,7 +547,6 @@ export default function ProjectViewer({
       stopAudioInternal(false);
       if (autoModeRef.current) setAutoMode(false);
     } finally {
-      // si cette requête est encore la requête active, on nettoie la ref
       if (ttsAbortRef.current === controller) {
         ttsAbortRef.current = null;
       }
@@ -639,10 +659,7 @@ export default function ProjectViewer({
         style={{ scrollbarWidth: "none" }}
       >
         {projects.map((p, i) => (
-          <section
-            key={p.id}
-            className="h-full w-screen shrink-0 snap-center bg-neutral-950 text-white"
-          >
+          <section key={p.id} className="h-full w-screen shrink-0 snap-center bg-neutral-950 text-white">
             <ProjectSlide
               project={p}
               onUpdate={onUpdate}

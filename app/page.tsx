@@ -61,7 +61,7 @@ export default function Home() {
       id: "temp-" + Date.now(),
       title: "Nouveau Projet",
       description: "",
-      type: "Perso",
+      type: "perso", // ✅ FIX: doit matcher ProjectType ("pro" | "perso")
       categories: [],
       githubLink: "",
       siteLink: "",

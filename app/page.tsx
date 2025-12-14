@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import Filters from "@/app/components/Filters";
 import ProjectCard from "@/app/components/ProjectCard";
 import ProjectViewer from "@/app/components/ProjectViewer";
-import type { Project } from "@/lib/projects";
+
+import type { Project, ProjectCategory, ProjectType } from "@/lib/projects";
+import { isProjectCategory, isProjectType } from "@/lib/projects";
 
 type FiltersState = {
-  types: Record<string, boolean>;
-  categories: Record<string, boolean>;
-
-  // ✅ Favori
+  types: Partial<Record<ProjectType, boolean>>;
+  categories: Partial<Record<ProjectCategory, boolean>>;
   favoriteOnly: boolean;
 };
 
@@ -44,14 +44,16 @@ export default function Home() {
     loadProjects();
   }, []);
 
-  // --- LISTES DYNAMIQUES ---
-  const availableTypes = useMemo(() => {
-    const types = new Set(projects.map((p) => p.type).filter(Boolean));
+  // --- LISTES DYNAMIQUES (strictes) ---
+  const availableTypes = useMemo((): ProjectType[] => {
+    const types = new Set(projects.map((p) => p.type).filter(isProjectType));
     return Array.from(types).sort();
   }, [projects]);
 
-  const availableCategories = useMemo(() => {
-    const cats = new Set(projects.flatMap((p) => p.categories).filter(Boolean));
+  const availableCategories = useMemo((): ProjectCategory[] => {
+    const cats = new Set(
+      projects.flatMap((p) => p.categories).filter(isProjectCategory)
+    );
     return Array.from(cats).sort();
   }, [projects]);
 
@@ -61,7 +63,7 @@ export default function Home() {
       id: "temp-" + Date.now(),
       title: "Nouveau Projet",
       description: "",
-      type: "perso", // ✅ FIX: doit matcher ProjectType ("pro" | "perso")
+      type: "perso",
       categories: [],
       githubLink: "",
       siteLink: "",
@@ -110,23 +112,29 @@ export default function Home() {
     }
   };
 
-  // --- FILTRAGE ---
+  // --- FILTRAGE (corrigé ProjectCategory) ---
   const filteredProjects = useMemo(() => {
-    const activeTypes = Object.entries(filters.types)
+    const activeTypes = (Object.entries(filters.types) as [
+      ProjectType,
+      boolean
+    ][])
       .filter(([, isChecked]) => isChecked)
       .map(([type]) => type);
 
-    const activeCats = Object.entries(filters.categories)
+    const activeCats = (Object.entries(filters.categories) as [
+      ProjectCategory,
+      boolean
+    ][])
       .filter(([, isChecked]) => isChecked)
       .map(([cat]) => cat);
 
     return projects.filter((p) => {
       const typeOk = activeTypes.length === 0 || activeTypes.includes(p.type);
+
       const catOk =
         activeCats.length === 0 ||
         activeCats.some((c) => p.categories.includes(c));
 
-      // ✅ FAVORI
       const favOk = !filters.favoriteOnly || p.favorite === true;
 
       return typeOk && catOk && favOk;

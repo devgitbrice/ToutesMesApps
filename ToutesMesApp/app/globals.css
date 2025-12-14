@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Empêche le scroll quand le viewer fullscreen est ouvert */
+body.viewer-open {
+  overflow: hidden;
+}

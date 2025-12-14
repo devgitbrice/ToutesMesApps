@@ -1,8 +1,10 @@
-type FiltersState = {
+"use client";
+
+export type FiltersState = {
   types: Record<string, boolean>;
   categories: Record<string, boolean>;
 
-  // ✅ Nouveau : filtre Favori
+  // ✅ Filtre Favori
   favoriteOnly: boolean;
 };
 
@@ -25,7 +27,7 @@ export default function Filters({
   availableTypes,
   availableCategories,
 }: FiltersProps) {
-  // Fonction générique pour cocher/décocher
+  // --- TOGGLES ---
   const toggleType = (type: string) => {
     onChange({
       ...value,
@@ -40,7 +42,6 @@ export default function Filters({
     });
   };
 
-  // ✅ Favori
   const toggleFavoriteOnly = () => {
     onChange({
       ...value,
@@ -48,6 +49,7 @@ export default function Filters({
     });
   };
 
+  // --- STYLES ---
   const containerClasses = isDarkMode
     ? "rounded-2xl border border-slate-800 bg-slate-900 p-5 transition-colors h-fit"
     : "rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition-colors h-fit";
@@ -59,20 +61,30 @@ export default function Filters({
   return (
     <div className={containerClasses}>
       <h2 className={`text-lg font-semibold ${titleClasses}`}>Filtres</h2>
-      <div className={`mb-4 text-sm ${isDarkMode ? "text-slate-400" : "text-neutral-600"}`}>
+
+      <div
+        className={`mb-4 text-sm ${
+          isDarkMode ? "text-slate-400" : "text-neutral-600"
+        }`}
+      >
         {shown} / {total} projets
       </div>
 
       <div className="space-y-6">
-        {/* ✅ Section FAVORI */}
+        {/* ⭐ FAVORI */}
         <div>
-          <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
+          <h3
+            className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}
+          >
             Favori
           </h3>
-          <label className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
+
+          <label
+            className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}
+          >
             <input
               type="checkbox"
-              checked={!!value.favoriteOnly}
+              checked={value.favoriteOnly}
               onChange={toggleFavoriteOnly}
               className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
             />
@@ -80,13 +92,18 @@ export default function Filters({
           </label>
         </div>
 
-        {/* Section TYPES Dynamique */}
+        {/* 🧩 TYPES */}
         <div>
-          <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
+          <h3
+            className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}
+          >
             Type
           </h3>
+
           <div className="space-y-2">
-            {availableTypes.length === 0 && <p className="text-xs italic opacity-50">Aucun type</p>}
+            {availableTypes.length === 0 && (
+              <p className="text-xs italic opacity-50">Aucun type</p>
+            )}
 
             {availableTypes.map((type) => (
               <label
@@ -105,13 +122,18 @@ export default function Filters({
           </div>
         </div>
 
-        {/* Section CATÉGORIES Dynamique */}
+        {/* 🏷️ CATÉGORIES */}
         <div>
-          <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
+          <h3
+            className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}
+          >
             Catégories
           </h3>
+
           <div className="space-y-2">
-            {availableCategories.length === 0 && <p className="text-xs italic opacity-50">Aucune catégorie</p>}
+            {availableCategories.length === 0 && (
+              <p className="text-xs italic opacity-50">Aucune catégorie</p>
+            )}
 
             {availableCategories.map((cat) => (
               <label

@@ -86,7 +86,7 @@ export default function Home() {
         prev.map((p) => (p.id === newProject.id ? { ...p, id: data.id } : p))
       );
     } catch (e) {
-      console.error("Erreur lors de la création", e);
+      console.error("Erreur lors de la création !", e);
       alert("Erreur lors de la création du projet sur Airtable.");
     }
   };

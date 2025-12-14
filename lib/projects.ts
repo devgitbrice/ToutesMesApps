@@ -1,24 +1,74 @@
 // lib/projects.ts
 
-export type ProjectType = "pro" | "perso";
+/** =====================
+ * Types stricts autorisés
+ * ===================== */
 
-export type ProjectCategory = "formation" | "appartement";
+export const PROJECT_TYPES = ["pro", "perso"] as const;
+export type ProjectType = (typeof PROJECT_TYPES)[number];
+
+export const PROJECT_CATEGORIES = ["formation", "appartement"] as const;
+export type ProjectCategory = (typeof PROJECT_CATEGORIES)[number];
+
+/** =====================
+ * Helpers runtime (safe)
+ * ===================== */
+
+/**
+ * Vérifie qu'une valeur est un ProjectType valide
+ */
+export function isProjectType(v: unknown): v is ProjectType {
+  return typeof v === "string" && PROJECT_TYPES.includes(v as ProjectType);
+}
+
+/**
+ * Vérifie qu'une valeur est une ProjectCategory valide
+ */
+export function isProjectCategory(v: unknown): v is ProjectCategory {
+  return (
+    typeof v === "string" &&
+    PROJECT_CATEGORIES.includes(v as ProjectCategory)
+  );
+}
+
+/**
+ * Normalise un type (utile si la source n'est pas fiable : Airtable, API…)
+ */
+export function toProjectType(
+  v: unknown,
+  fallback: ProjectType = "perso"
+): ProjectType {
+  return isProjectType(v) ? v : fallback;
+}
+
+/**
+ * Normalise un tableau de catégories
+ */
+export function toProjectCategories(v: unknown): ProjectCategory[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter(isProjectCategory);
+}
+
+/** =====================
+ * Modèle principal
+ * ===================== */
 
 export type Project = {
   id: string;
   title: string;
   description: string;
+
   type: ProjectType;
   categories: ProjectCategory[];
 
   // ✅ Favori (Airtable checkbox)
   favorite?: boolean;
 
-  // Liens (optionnels) - versions "lib" (anciennes)
+  // Liens (optionnels) – anciennes versions
   githubUrl?: string;
   websiteUrl?: string;
 
-  // Liens (optionnels) - versions Airtable (actuelles dans ton API)
+  // Liens (optionnels) – versions Airtable
   githubLink?: string;
   siteLink?: string;
 
@@ -28,21 +78,28 @@ export type Project = {
   year?: number;
 };
 
+/** =====================
+ * Données locales
+ * ===================== */
+
 export const PROJECTS: Project[] = [
   {
     id: "toutes-mes-apps",
     title: "ToutesMesApps",
-    description: "Dashboard central de tous mes projets avec filtres et viewer fullscreen.",
+    description:
+      "Dashboard central de tous mes projets avec filtres et viewer fullscreen.",
     type: "perso",
     categories: ["formation"],
     githubUrl: "https://github.com/devgitbrice/ToutesMesApps",
     websiteUrl: "https://toutesmesapps.vercel.app",
     tags: ["Next.js", "Tailwind", "TypeScript"],
     year: 2025,
-    images: ["/projects/toutesmesapps/1.png", "/projects/toutesmesapps/2.png"],
+    images: [
+      "/projects/toutesmesapps/1.png",
+      "/projects/toutesmesapps/2.png",
+    ],
     favorite: false,
   },
-
   {
     id: "note-speak-ai",
     title: "NoteSpeak AI",
@@ -54,11 +111,11 @@ export const PROJECTS: Project[] = [
     year: 2024,
     favorite: false,
   },
-
   {
     id: "gestion-appartement",
     title: "Gestion Appartement",
-    description: "Outil de suivi et gestion d’un appartement (charges, documents).",
+    description:
+      "Outil de suivi et gestion d’un appartement (charges, documents).",
     type: "pro",
     categories: ["appartement"],
     websiteUrl: "https://gestion-appartement.vercel.app",
@@ -66,11 +123,11 @@ export const PROJECTS: Project[] = [
     year: 2023,
     favorite: false,
   },
-
   {
     id: "formation-web",
     title: "Formation Web",
-    description: "Projet pédagogique pour apprendre le développement web moderne.",
+    description:
+      "Projet pédagogique pour apprendre le développement web moderne.",
     type: "pro",
     categories: ["formation"],
     tags: ["Formation", "Frontend"],

@@ -3,8 +3,6 @@
 export type FiltersState = {
   types: Record<string, boolean>;
   categories: Record<string, boolean>;
-
-  // ✅ Filtre Favori
   favoriteOnly: boolean;
 };
 
@@ -18,6 +16,22 @@ interface FiltersProps {
   availableCategories: string[];
 }
 
+// utils
+const norm = (s: string) => s.trim().toLowerCase();
+const dedupeNormalized = (arr: string[]) => {
+  const map = new Map<string, string>(); // normalized -> original (first seen)
+  for (const raw of arr) {
+    const v = (raw ?? "").toString().trim();
+    if (!v) continue;
+    const k = norm(v);
+    if (!map.has(k)) map.set(k, v);
+  }
+  // return in alpha order (based on normalized)
+  return Array.from(map.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([, original]) => original);
+};
+
 export default function Filters({
   value,
   onChange,
@@ -27,18 +41,25 @@ export default function Filters({
   availableTypes,
   availableCategories,
 }: FiltersProps) {
+  // ✅ normalisation + dédoublonnage pour éviter "Pro"/"pro" en double, etc.
+  const types = dedupeNormalized(availableTypes);
+  const categories = dedupeNormalized(availableCategories);
+
   // --- TOGGLES ---
   const toggleType = (type: string) => {
+    // on stocke la clé normalisée dans le state (plus stable)
+    const key = norm(type);
     onChange({
       ...value,
-      types: { ...value.types, [type]: !value.types[type] },
+      types: { ...value.types, [key]: !value.types[key] },
     });
   };
 
   const toggleCategory = (cat: string) => {
+    const key = norm(cat);
     onChange({
       ...value,
-      categories: { ...value.categories, [cat]: !value.categories[cat] },
+      categories: { ...value.categories, [key]: !value.categories[key] },
     });
   };
 
@@ -73,15 +94,11 @@ export default function Filters({
       <div className="space-y-6">
         {/* ⭐ FAVORI */}
         <div>
-          <h3
-            className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}
-          >
+          <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
             Favori
           </h3>
 
-          <label
-            className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}
-          >
+          <label className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
             <input
               type="checkbox"
               checked={value.favoriteOnly}
@@ -94,61 +111,63 @@ export default function Filters({
 
         {/* 🧩 TYPES */}
         <div>
-          <h3
-            className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}
-          >
+          <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
             Type
           </h3>
 
           <div className="space-y-2">
-            {availableTypes.length === 0 && (
-              <p className="text-xs italic opacity-50">Aucun type</p>
+            {types.length === 0 && (
+              <p className={`text-xs italic ${subTitleClasses}`}>Aucun type</p>
             )}
 
-            {availableTypes.map((type) => (
-              <label
-                key={type}
-                className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}
-              >
-                <input
-                  type="checkbox"
-                  checked={!!value.types[type]}
-                  onChange={() => toggleType(type)}
-                  className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="capitalize">{type}</span>
-              </label>
-            ))}
+            {types.map((type) => {
+              const key = norm(type);
+              return (
+                <label
+                  key={key}
+                  className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!value.types[key]}
+                    onChange={() => toggleType(type)}
+                    className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="capitalize">{type}</span>
+                </label>
+              );
+            })}
           </div>
         </div>
 
         {/* 🏷️ CATÉGORIES */}
         <div>
-          <h3
-            className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}
-          >
+          <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
             Catégories
           </h3>
 
           <div className="space-y-2">
-            {availableCategories.length === 0 && (
-              <p className="text-xs italic opacity-50">Aucune catégorie</p>
+            {categories.length === 0 && (
+              <p className={`text-xs italic ${subTitleClasses}`}>Aucune catégorie</p>
             )}
 
-            {availableCategories.map((cat) => (
-              <label
-                key={cat}
-                className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}
-              >
-                <input
-                  type="checkbox"
-                  checked={!!value.categories[cat]}
-                  onChange={() => toggleCategory(cat)}
-                  className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="capitalize">{cat}</span>
-              </label>
-            ))}
+            {categories.map((cat) => {
+              const key = norm(cat);
+              return (
+                <label
+                  key={key}
+                  className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!value.categories[key]}
+                    onChange={() => toggleCategory(cat)}
+                    className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="capitalize">{cat}</span>
+                </label>
+              );
+            })}
           </div>
         </div>
       </div>

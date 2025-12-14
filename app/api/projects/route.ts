@@ -25,6 +25,43 @@ const asBool = (v: unknown, fallback = false) => {
   return fallback;
 };
 
+const asStringArray = (v: unknown, fallback: string[] = []) => {
+  if (Array.isArray(v)) return v.filter((x) => typeof x === "string") as string[];
+  if (typeof v === "string") return [v];
+  if (v === null || v === undefined) return fallback;
+  return fallback;
+};
+
+// Normalisation Type (API -> front)
+const normalizeTypeOut = (v: unknown): "pro" | "perso" => {
+  const raw = asString(v, "Perso").trim().toLowerCase();
+  if (raw === "pro") return "pro";
+  if (raw === "perso") return "perso";
+
+  // parfois Airtable renvoie "Pro"/"Perso" ou autre label
+  if (raw.includes("pro")) return "pro";
+  return "perso";
+};
+
+// Normalisation Type (front -> Airtable)
+const normalizeTypeIn = (v: unknown): "Pro" | "Perso" => {
+  const raw = asString(v, "Perso").trim().toLowerCase();
+  return raw === "pro" ? "Pro" : "Perso";
+};
+
+// Normalisation Categories (API -> front)
+const normalizeCategoriesOut = (v: unknown): string[] => {
+  return asStringArray(v, []).map((c) => c.trim().toLowerCase()).filter(Boolean);
+};
+
+// Normalisation Categories (front -> Airtable)
+const normalizeCategoriesIn = (v: unknown): string[] => {
+  // Ici on renvoie des strings telles quelles vers Airtable (Multiple select)
+  // Si tes options Airtable sont en lowercase, c’est parfait.
+  // Si elles sont en "Formation", "Appartement", tu peux adapter ici.
+  return asStringArray(v, []).map((c) => c.trim()).filter(Boolean);
+};
+
 // 1. GET : Récupérer tous les projets
 export async function GET() {
   try {
@@ -35,18 +72,33 @@ export async function GET() {
       })
       .all();
 
-    const projects = records.map((record) => ({
-      id: record.id,
-      title: (record.get("Title") as string) || "Sans titre",
-      description: (record.get("Description") as string) || "",
-      type: (record.get("Type") as string) || "Perso",
-      categories: (record.get("Categories") as string[]) || [],
-      githubLink: (record.get("GithubLink") as string) || "",
-      siteLink: (record.get("SiteLink") as string) || "",
+    const projects = records.map((record) => {
+      const title = record.get("Title");
+      const description = record.get("Description");
+      const type = record.get("Type");
+      const categories = record.get("Categories");
+      const githubLink = record.get("GithubLink");
+      const siteLink = record.get("SiteLink");
+      const favorite = record.get("favorite");
 
-      // ✅ FAVORITE (checkbox Airtable)
-      favorite: asBool(record.get("favorite"), false),
-    }));
+      return {
+        id: record.id,
+        title: asString(title, "Sans titre"),
+        description: asString(description, ""),
+
+        // ✅ IMPORTANT : on renvoie "pro" | "perso" pour que tes filtres aient des valeurs cohérentes
+        type: normalizeTypeOut(type),
+
+        // ✅ IMPORTANT : tableau de catégories toujours présent et normalisé
+        categories: normalizeCategoriesOut(categories),
+
+        githubLink: asString(githubLink, ""),
+        siteLink: asString(siteLink, ""),
+
+        // ✅ FAVORITE (checkbox Airtable)
+        favorite: asBool(favorite, false),
+      };
+    });
 
     return NextResponse.json(projects);
   } catch (error: any) {
@@ -89,8 +141,14 @@ export async function PUT(request: Request) {
 
     if ("title" in body) fields.Title = asString(body.title, "");
     if ("description" in body) fields.Description = asString(body.description, "");
-    if ("type" in body) fields.Type = asString(body.type, "Perso");
-    if ("categories" in body) fields.Categories = Array.isArray(body.categories) ? body.categories : [];
+
+    // ✅ On accepte "pro"/"perso" côté front et on écrit "Pro"/"Perso" dans Airtable
+    if ("type" in body) fields.Type = normalizeTypeIn(body.type);
+
+    // ✅ Toujours un tableau pour Airtable (Multiple select)
+    if ("categories" in body) fields.Categories = normalizeCategoriesIn(body.categories);
+
+    // ✅ Liens
     if ("githubLink" in body) fields.GithubLink = asString(body.githubLink, "");
     if ("siteLink" in body) fields.SiteLink = asString(body.siteLink, "");
 
@@ -101,12 +159,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
-    await base("Projects").update([
-      {
-        id,
-        fields,
-      },
-    ]);
+    await base("Projects").update([{ id, fields }]);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
@@ -124,12 +177,17 @@ export async function POST(request: Request) {
     const createdRecords = await base("Projects").create([
       {
         fields: {
-          Title: body?.title || "Nouveau Projet",
-          Description: body?.description || "",
-          Type: body?.type || "Perso",
-          Categories: Array.isArray(body?.categories) ? body.categories : [],
-          GithubLink: body?.githubLink || "",
-          SiteLink: body?.siteLink || "",
+          Title: asString(body?.title, "Nouveau Projet"),
+          Description: asString(body?.description, ""),
+
+          // ✅ On accepte "pro"/"perso" côté front
+          Type: normalizeTypeIn(body?.type),
+
+          // ✅ tableau attendu par Airtable (Multiple select)
+          Categories: normalizeCategoriesIn(body?.categories),
+
+          GithubLink: asString(body?.githubLink, ""),
+          SiteLink: asString(body?.siteLink, ""),
 
           // ✅ FAVORITE : par défaut false
           favorite: asBool(body?.favorite, false),

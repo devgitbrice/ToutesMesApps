@@ -1,67 +1,80 @@
 // lib/projects.ts
 
-/**
- * Type de projet : pro ou perso
- */
 export type ProjectType = "pro" | "perso";
 
-/**
- * Catégories de projet
- */
 export type ProjectCategory = "formation" | "appartement";
 
-/**
- * Statut d’avancement (optionnel)
- */
-export type ProjectStatus = "idea" | "wip" | "done";
-
-/**
- * Modèle de données d’un projet
- */
 export type Project = {
   id: string;
   title: string;
-  description?: string;
+  description: string;
   type: ProjectType;
   categories: ProjectCategory[];
-  status?: ProjectStatus;
+
+  // ✅ Favori (Airtable checkbox)
+  favorite?: boolean;
+
+  // Liens (optionnels) - versions "lib" (anciennes)
+  githubUrl?: string;
+  websiteUrl?: string;
+
+  // Liens (optionnels) - versions Airtable (actuelles dans ton API)
+  githubLink?: string;
+  siteLink?: string;
+
+  // UI / viewer
+  images?: string[];
+  tags?: string[];
+  year?: number;
 };
 
-/**
- * Liste centrale des projets
- * (source de vérité pour la grille + le viewer fullscreen)
- */
 export const PROJECTS: Project[] = [
   {
-    id: "dashboard",
+    id: "toutes-mes-apps",
     title: "ToutesMesApps",
-    description: "Dashboard central de tous mes projets",
-    type: "pro",
+    description: "Dashboard central de tous mes projets avec filtres et viewer fullscreen.",
+    type: "perso",
     categories: ["formation"],
-    status: "wip",
+    githubUrl: "https://github.com/devgitbrice/ToutesMesApps",
+    websiteUrl: "https://toutesmesapps.vercel.app",
+    tags: ["Next.js", "Tailwind", "TypeScript"],
+    year: 2025,
+    images: ["/projects/toutesmesapps/1.png", "/projects/toutesmesapps/2.png"],
+    favorite: false,
   },
+
   {
-    id: "appartement",
+    id: "note-speak-ai",
+    title: "NoteSpeak AI",
+    description: "Application de prise de notes avec lecture vocale et IA.",
+    type: "perso",
+    categories: ["formation"],
+    githubUrl: "https://github.com/devgitbrice/NoteSpeakAi",
+    tags: ["AI", "Speech", "Next.js"],
+    year: 2024,
+    favorite: false,
+  },
+
+  {
+    id: "gestion-appartement",
     title: "Gestion Appartement",
-    description: "Suivi des documents, travaux et dépenses",
-    type: "perso",
+    description: "Outil de suivi et gestion d’un appartement (charges, documents).",
+    type: "pro",
     categories: ["appartement"],
-    status: "idea",
+    websiteUrl: "https://gestion-appartement.vercel.app",
+    tags: ["Dashboard", "CRUD"],
+    year: 2023,
+    favorite: false,
   },
+
   {
-    id: "formation-aws",
-    title: "Formation AWS",
-    description: "Notes, labs et rappels AWS",
+    id: "formation-web",
+    title: "Formation Web",
+    description: "Projet pédagogique pour apprendre le développement web moderne.",
     type: "pro",
     categories: ["formation"],
-    status: "done",
-  },
-  {
-    id: "projet-perso-x",
-    title: "Projet Perso X",
-    description: "Prototype et expérimentations personnelles",
-    type: "perso",
-    categories: ["formation"],
-    status: "wip",
+    tags: ["Formation", "Frontend"],
+    year: 2022,
+    favorite: false,
   },
 ];

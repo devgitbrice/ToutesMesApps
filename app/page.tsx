@@ -9,11 +9,15 @@ import type { Project } from "@/lib/projects";
 type FiltersState = {
   types: Record<string, boolean>;
   categories: Record<string, boolean>;
+
+  // ✅ Favori
+  favoriteOnly: boolean;
 };
 
 const DEFAULT_FILTERS: FiltersState = {
   types: {},
   categories: {},
+  favoriteOnly: false,
 };
 
 export default function Home() {
@@ -51,37 +55,33 @@ export default function Home() {
     return Array.from(cats).sort();
   }, [projects]);
 
-  // --- 1. CRÉATION DE PROJET (NOUVEAU) ---
+  // --- 1. CRÉATION DE PROJET ---
   const handleCreateProject = async () => {
-    // 1. Création d'un objet temporaire
     const newProject: Project = {
-      id: "temp-" + Date.now(), // ID temporaire
+      id: "temp-" + Date.now(),
       title: "Nouveau Projet",
       description: "",
       type: "Perso",
       categories: [],
       githubLink: "",
       siteLink: "",
+      favorite: false,
     };
 
-    // 2. On l'ajoute à la liste et ON L'OUVRE DIRECTEMENT
-    const newIndex = projects.length; // Il sera à la fin du tableau
+    const newIndex = projects.length;
     setProjects((prev) => [...prev, newProject]);
-    setActiveIndex(newIndex); // <-- Ouverture immédiate du Viewer
+    setActiveIndex(newIndex);
 
-    // 3. Sauvegarde en base de données
     try {
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newProject),
       });
-      
-      if (!res.ok) throw new Error("Erreur création");
-      
-      const data = await res.json();
 
-      // 4. On met à jour l'ID temporaire avec le vrai ID Airtable
+      if (!res.ok) throw new Error("Erreur création");
+
+      const data = await res.json();
       setProjects((prev) =>
         prev.map((p) => (p.id === newProject.id ? { ...p, id: data.id } : p))
       );
@@ -97,7 +97,6 @@ export default function Home() {
       prev.map((p) => (p.id === updatedProject.id ? updatedProject : p))
     );
 
-    // Si c'est un projet temporaire (pas encore sauvegardé), on attend
     if (updatedProject.id.startsWith("temp-")) return;
 
     try {
@@ -126,7 +125,11 @@ export default function Home() {
       const catOk =
         activeCats.length === 0 ||
         activeCats.some((c) => p.categories.includes(c));
-      return typeOk && catOk;
+
+      // ✅ FAVORI
+      const favOk = !filters.favoriteOnly || p.favorite === true;
+
+      return typeOk && catOk && favOk;
     });
   }, [filters, projects]);
 
@@ -147,26 +150,31 @@ export default function Home() {
   }
 
   return (
-    <div 
+    <div
       className={`min-h-screen transition-colors duration-300 ${
         isDarkMode ? "bg-slate-950 text-white" : "bg-neutral-50 text-neutral-900"
       }`}
     >
-      <header 
+      <header
         className={`border-b transition-colors duration-300 ${
-          isDarkMode ? "border-slate-800 bg-slate-950" : "bg-white border-neutral-200"
+          isDarkMode
+            ? "border-slate-800 bg-slate-950"
+            : "bg-white border-neutral-200"
         }`}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
           <div>
             <h1 className="text-xl font-bold">ToutesMesApps</h1>
-            <p className={`mt-1 text-sm ${isDarkMode ? "text-slate-400" : "text-neutral-600"}`}>
+            <p
+              className={`mt-1 text-sm ${
+                isDarkMode ? "text-slate-400" : "text-neutral-600"
+              }`}
+            >
               Mes projets en cartes + filtres + swipe fullscreen
             </p>
           </div>
-          
+
           <div className="flex gap-3">
-            {/* BOUTON AJOUTER */}
             <button
               onClick={handleCreateProject}
               className="rounded-full bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-500 shadow-md hover:shadow-lg active:scale-95"
@@ -174,12 +182,11 @@ export default function Home() {
               + Nouveau
             </button>
 
-            {/* BOUTON DARK MODE */}
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
               className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                isDarkMode 
-                  ? "bg-slate-800 text-yellow-300 hover:bg-slate-700" 
+                isDarkMode
+                  ? "bg-slate-800 text-yellow-300 hover:bg-slate-700"
                   : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
               }`}
             >
@@ -202,10 +209,10 @@ export default function Home() {
 
         <section>
           {filteredProjects.length === 0 ? (
-            <div 
+            <div
               className={`rounded-2xl border p-6 text-sm shadow-sm transition-colors ${
-                isDarkMode 
-                  ? "bg-slate-900 border-slate-800 text-slate-300" 
+                isDarkMode
+                  ? "bg-slate-900 border-slate-800 text-slate-300"
                   : "bg-white border-neutral-200 text-neutral-700"
               }`}
             >

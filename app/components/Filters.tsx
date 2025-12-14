@@ -1,6 +1,9 @@
 type FiltersState = {
   types: Record<string, boolean>;
   categories: Record<string, boolean>;
+
+  // ✅ Nouveau : filtre Favori
+  favoriteOnly: boolean;
 };
 
 interface FiltersProps {
@@ -9,8 +12,8 @@ interface FiltersProps {
   total: number;
   shown: number;
   isDarkMode: boolean;
-  availableTypes: string[];        // <-- Reçoit la liste d'Airtable
-  availableCategories: string[];   // <-- Reçoit la liste d'Airtable
+  availableTypes: string[];
+  availableCategories: string[];
 }
 
 export default function Filters({
@@ -22,7 +25,6 @@ export default function Filters({
   availableTypes,
   availableCategories,
 }: FiltersProps) {
-  
   // Fonction générique pour cocher/décocher
   const toggleType = (type: string) => {
     onChange({
@@ -35,6 +37,14 @@ export default function Filters({
     onChange({
       ...value,
       categories: { ...value.categories, [cat]: !value.categories[cat] },
+    });
+  };
+
+  // ✅ Favori
+  const toggleFavoriteOnly = () => {
+    onChange({
+      ...value,
+      favoriteOnly: !value.favoriteOnly,
     });
   };
 
@@ -54,6 +64,22 @@ export default function Filters({
       </div>
 
       <div className="space-y-6">
+        {/* ✅ Section FAVORI */}
+        <div>
+          <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
+            Favori
+          </h3>
+          <label className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
+            <input
+              type="checkbox"
+              checked={!!value.favoriteOnly}
+              onChange={toggleFavoriteOnly}
+              className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span>Afficher uniquement les favoris</span>
+          </label>
+        </div>
+
         {/* Section TYPES Dynamique */}
         <div>
           <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
@@ -61,16 +87,18 @@ export default function Filters({
           </h3>
           <div className="space-y-2">
             {availableTypes.length === 0 && <p className="text-xs italic opacity-50">Aucun type</p>}
-            
+
             {availableTypes.map((type) => (
-              <label key={type} className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
+              <label
+                key={type}
+                className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}
+              >
                 <input
                   type="checkbox"
-                  checked={!!value.types[type]} // "!!" convertit undefined en false
+                  checked={!!value.types[type]}
                   onChange={() => toggleType(type)}
                   className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
                 />
-                {/* On met la première lettre en majuscule pour faire joli */}
                 <span className="capitalize">{type}</span>
               </label>
             ))}
@@ -86,7 +114,10 @@ export default function Filters({
             {availableCategories.length === 0 && <p className="text-xs italic opacity-50">Aucune catégorie</p>}
 
             {availableCategories.map((cat) => (
-              <label key={cat} className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
+              <label
+                key={cat}
+                className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}
+              >
                 <input
                   type="checkbox"
                   checked={!!value.categories[cat]}

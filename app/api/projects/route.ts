@@ -10,63 +10,101 @@ const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(
   process.env.AIRTABLE_BASE_ID!
 );
 
+// Helpers
+const asString = (v: unknown, fallback = "") => {
+  if (typeof v === "string") return v;
+  if (v === null || v === undefined) return fallback;
+  return String(v);
+};
+
+const asBool = (v: unknown, fallback = false) => {
+  if (typeof v === "boolean") return v;
+  if (v === 1 || v === "1" || v === "true") return true;
+  if (v === 0 || v === "0" || v === "false") return false;
+  if (v === null || v === undefined) return fallback;
+  return fallback;
+};
+
 // 1. GET : Récupérer tous les projets
 export async function GET() {
   try {
     const records = await base("Projects")
       .select({
-        view: "Grid view", // Assure-toi que cette vue existe dans ton Airtable
+        view: "Grid view",
         sort: [{ field: "Title", direction: "asc" }],
       })
       .all();
 
     const projects = records.map((record) => ({
       id: record.id,
-      title: record.get("Title") || "Sans titre",
-      description: record.get("Description") || "",
-      type: record.get("Type") || "Perso", // Valeur par défaut
-      categories: record.get("Categories") || [],
-      githubLink: record.get("GithubLink") || "",
-      siteLink: record.get("SiteLink") || "",
+      title: (record.get("Title") as string) || "Sans titre",
+      description: (record.get("Description") as string) || "",
+      type: (record.get("Type") as string) || "Perso",
+      categories: (record.get("Categories") as string[]) || [],
+      githubLink: (record.get("GithubLink") as string) || "",
+      siteLink: (record.get("SiteLink") as string) || "",
+
+      // ✅ FAVORITE (checkbox Airtable)
+      favorite: asBool(record.get("favorite"), false),
     }));
 
     return NextResponse.json(projects);
   } catch (error: any) {
     console.error("❌ ERREUR AIRTABLE GET :", error);
-    
-    // Gestion spécifique des erreurs courantes
-    if (error.error === 'NOT_FOUND') {
-      return NextResponse.json({ error: "Table 'Projects' introuvable ou Base ID incorrect" }, { status: 404 });
+
+    if (error?.error === "NOT_FOUND") {
+      return NextResponse.json(
+        { error: "Table 'Projects' introuvable ou Base ID incorrect" },
+        { status: 404 }
+      );
     }
-    if (error.statusCode === 401 || error.statusCode === 403) {
-      return NextResponse.json({ error: "Problème de clé API ou de permissions" }, { status: 403 });
+    if (error?.statusCode === 401 || error?.statusCode === 403) {
+      return NextResponse.json(
+        { error: "Problème de clé API ou de permissions" },
+        { status: 403 }
+      );
     }
 
     return NextResponse.json({ error: "Erreur chargement" }, { status: 500 });
   }
 }
 
-// 2. PUT : Mettre à jour un projet existant
+// 2. PUT : Mettre à jour un projet existant (supporte update partiel, ex: favorite uniquement)
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    
+
+    const id = asString(body?.id);
+    if (!id) {
+      return NextResponse.json({ error: "Missing id" }, { status: 400 });
+    }
+
     // Protection : on ne peut pas update un ID temporaire
-    if (body.id.startsWith("temp-")) {
+    if (id.startsWith("temp-")) {
       return NextResponse.json({ error: "Cannot update temp ID" }, { status: 400 });
+    }
+
+    // ✅ On construit fields dynamiquement pour ne PAS écraser ce qui n'est pas envoyé
+    const fields: Record<string, any> = {};
+
+    if ("title" in body) fields.Title = asString(body.title, "");
+    if ("description" in body) fields.Description = asString(body.description, "");
+    if ("type" in body) fields.Type = asString(body.type, "Perso");
+    if ("categories" in body) fields.Categories = Array.isArray(body.categories) ? body.categories : [];
+    if ("githubLink" in body) fields.GithubLink = asString(body.githubLink, "");
+    if ("siteLink" in body) fields.SiteLink = asString(body.siteLink, "");
+
+    // ✅ FAVORITE (checkbox)
+    if ("favorite" in body) fields.favorite = asBool(body.favorite, false);
+
+    if (Object.keys(fields).length === 0) {
+      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
     await base("Projects").update([
       {
-        id: body.id,
-        fields: {
-          Title: body.title,
-          Description: body.description,
-          Type: body.type,
-          Categories: body.categories,
-          GithubLink: body.githubLink,
-          SiteLink: body.siteLink,
-        },
+        id,
+        fields,
       },
     ]);
 
@@ -86,12 +124,15 @@ export async function POST(request: Request) {
     const createdRecords = await base("Projects").create([
       {
         fields: {
-          Title: body.title || "Nouveau Projet",
-          Description: body.description || "",
-          Type: body.type || "Perso",
-          Categories: body.categories || [],
-          GithubLink: body.githubLink || "",
-          SiteLink: body.siteLink || "",
+          Title: body?.title || "Nouveau Projet",
+          Description: body?.description || "",
+          Type: body?.type || "Perso",
+          Categories: Array.isArray(body?.categories) ? body.categories : [],
+          GithubLink: body?.githubLink || "",
+          SiteLink: body?.siteLink || "",
+
+          // ✅ FAVORITE : par défaut false
+          favorite: asBool(body?.favorite, false),
         },
       },
     ]);
@@ -99,9 +140,7 @@ export async function POST(request: Request) {
     const newId = createdRecords[0].id;
     console.log("✅ Projet créé avec ID:", newId);
 
-    // On renvoie l'ID généré par Airtable pour que l'app remplace l'ID temporaire
     return NextResponse.json({ id: newId });
-
   } catch (error: any) {
     console.error("❌ ERREUR AIRTABLE POST :", error);
     return NextResponse.json({ error: "Impossible de créer le projet" }, { status: 500 });

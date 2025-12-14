@@ -77,9 +77,7 @@ export default function Page() {
    * VALEURS DISPONIBLES
    * ===================== */
   const availableTypes = useMemo<ProjectType[]>(() => {
-    return PROJECT_TYPES.filter((t) =>
-      projects.some((p) => p.type === t)
-    );
+    return PROJECT_TYPES.filter((t) => projects.some((p) => p.type === t));
   }, [projects]);
 
   const availableCategories = useMemo<ProjectCategory[]>(() => {
@@ -101,8 +99,7 @@ export default function Page() {
       .map(([k]) => k as ProjectCategory);
 
     return projects.filter((p) => {
-      const typeOk =
-        activeTypes.length === 0 || activeTypes.includes(p.type);
+      const typeOk = activeTypes.length === 0 || activeTypes.includes(p.type);
 
       const catOk =
         activeCats.length === 0 ||
@@ -130,9 +127,7 @@ export default function Page() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold">ToutesMesApps</h1>
-            <p className="text-sm opacity-70">
-              Dashboard connecté à Airtable
-            </p>
+            <p className="text-sm opacity-70">Dashboard connecté à Airtable</p>
           </div>
 
           <button
@@ -171,13 +166,12 @@ export default function Page() {
               </div>
             ) : (
               filteredProjects.map((p) => (
-                <div
+                <ProjectCard
                   key={p.id}
+                  project={p}
+                  isDarkMode={isDarkMode}
                   onClick={() => setActiveProject(p)}
-                  className="cursor-pointer"
-                >
-                  <ProjectCard project={p} />
-                </div>
+                />
               ))
             )}
           </div>

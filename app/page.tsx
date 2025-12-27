@@ -20,6 +20,7 @@ export default function Page() {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -46,7 +47,6 @@ export default function Page() {
         const raw = await res.json();
         if (cancelled) return;
 
-        // ✅ NORMALISATION STRICTE
         const normalized: Project[] = (Array.isArray(raw) ? raw : []).map(
           (p: any) => ({
             ...p,
@@ -73,31 +73,61 @@ export default function Page() {
   }, []);
 
   /* =====================
-   * VALEURS DISPONIBLES
-   * ===================== */
-  const availableTypes = useMemo<ProjectType[]>(() => {
-    return PROJECT_TYPES.filter((t) => projects.some((p) => p.type === t));
-  }, [projects]);
-
-  const availableCategories = useMemo<ProjectCategory[]>(() => {
-    return PROJECT_CATEGORIES.filter((c) =>
-      projects.some((p) => p.categories.includes(c))
-    );
-  }, [projects]);
-
-  /* =====================
    * ACTIONS
    * ===================== */
+
+  // ✅ CRÉER UN NOUVEAU PROJET ET L'OUVRIR
+  const handleCreateProject = async () => {
+    try {
+      setIsCreating(true);
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Nouveau Projet",
+          description: "",
+          type: "perso",
+          categories: [],
+          favorite: false,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Erreur lors de la création");
+
+      const data = await res.json(); // On récupère l'ID généré par Airtable
+
+      const newProject: Project = {
+        id: data.id,
+        title: "Nouveau Projet",
+        description: "",
+        type: "perso",
+        categories: [],
+        githubLink: "",
+        siteLink: "",
+        favorite: false,
+      };
+
+      // Ajouter au début de la liste
+      setProjects((prev) => [newProject, ...prev]);
+      
+      // Ouvrir le viewer immédiatement (index 0 puisque ajouté au début)
+      setActiveIndex(0);
+
+    } catch (err) {
+      console.error("Erreur création projet:", err);
+      alert("Erreur lors de la création du projet dans Airtable");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const toggleProjectFavorite = async (project: Project) => {
     const newStatus = !project.favorite;
-    console.log(`[Front] Tentative de favori pour ${project.title} -> ${newStatus}`);
-
-    // 1. Mise à jour locale immédiate (Optimistic UI)
+    
     setProjects((prev) =>
       prev.map((p) => (p.id === project.id ? { ...p, favorite: newStatus } : p))
     );
 
-    // 2. Sauvegarde réelle dans Airtable via PUT
     try {
       const res = await fetch("/api/projects", {
         method: "PUT",
@@ -108,14 +138,9 @@ export default function Page() {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error("Erreur API lors de la mise à jour");
-      }
-      
-      console.log("[Front] Airtable mis à jour avec succès");
+      if (!res.ok) throw new Error("Erreur API");
     } catch (err) {
-      console.error("[Front] Erreur sauvegarde Airtable:", err);
-      // Rollback en cas d'échec pour synchroniser l'UI avec la réalité
+      console.error("Erreur sauvegarde favori:", err);
       setProjects((prev) =>
         prev.map((p) => (p.id === project.id ? project : p))
       );
@@ -136,48 +161,52 @@ export default function Page() {
 
     return projects.filter((p) => {
       const typeOk = activeTypes.length === 0 || activeTypes.includes(p.type);
-
-      const catOk =
-        activeCats.length === 0 ||
-        activeCats.some((c) => p.categories.includes(c));
-
+      const catOk = activeCats.length === 0 || activeCats.some((c) => p.categories.includes(c));
       const favOk = !filters.favoriteOnly || p.favorite === true;
-
       return typeOk && catOk && favOk;
     });
   }, [projects, filters]);
+
+  // Valeurs pour les filtres
+  const availableTypes = useMemo(() => PROJECT_TYPES.filter((t) => projects.some((p) => p.type === t)), [projects]);
+  const availableCategories = useMemo(() => PROJECT_CATEGORIES.filter((c) => projects.some((p) => p.categories.includes(c))), [projects]);
 
   /* =====================
    * UI
    * ===================== */
   return (
-    <div
-      className={
-        isDarkMode
-          ? "min-h-screen bg-slate-950 text-white transition-colors duration-300"
-          : "min-h-screen bg-neutral-50 text-neutral-900 transition-colors duration-300"
-      }
-    >
+    <div className={isDarkMode ? "min-h-screen bg-slate-950 text-white" : "min-h-screen bg-neutral-50 text-neutral-900"}>
       <div className="mx-auto max-w-[1600px] px-8 py-8">
         
-        {/* HEADER & FILTRES : ALIGNÉS HORIZONTALEMENT */}
+        {/* HEADER */}
         <header className="mb-12 flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-6 shrink-0">
+            
+            {/* ✅ BOUTON NOUVEAU PROJET */}
+            <button
+              onClick={handleCreateProject}
+              disabled={isCreating}
+              className="group flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-50"
+            >
+              <span className="text-lg leading-none">{isCreating ? "..." : "+"}</span>
+              <span>Nouveau Projet</span>
+            </button>
+
+            <div className="h-8 w-px bg-current opacity-10" />
+
             <div>
               <h1 className="text-3xl font-bold tracking-tight">ToutesMesApps</h1>
-              <p className="text-sm opacity-50">Dashboard connecté à Airtable</p>
+              <p className="text-sm opacity-50">Dashboard Airtable</p>
             </div>
             
             <button
               onClick={() => setIsDarkMode((v) => !v)}
               className="rounded-full border border-current opacity-60 px-3 py-3 text-lg hover:opacity-100 transition-all active:scale-90"
-              title="Changer le thème"
             >
               {isDarkMode ? "☀️" : "🌙"}
             </button>
           </div>
 
-          {/* Barre de filtres horizontale */}
           <div className="flex-1 w-full overflow-x-auto pb-2 lg:pb-0">
             <Filters
               value={filters}
@@ -191,22 +220,11 @@ export default function Page() {
           </div>
         </header>
 
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-6 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
-        {/* GRILLE DE PROJETS (4 COLONNES SUR LARGE SCREEN) */}
         <main className="w-full">
           {loading ? (
-            <div className="flex h-64 items-center justify-center rounded-2xl border-2 border-dashed border-neutral-300 opacity-50">
-              <span className="animate-pulse font-medium">Chargement de la collection...</span>
-            </div>
-          ) : filteredProjects.length === 0 ? (
-            <div className="flex h-64 items-center justify-center rounded-2xl border-2 border-dashed border-neutral-300 opacity-50">
-              <p>Aucun projet ne correspond à vos critères.</p>
-            </div>
+            <div className="flex h-64 items-center justify-center opacity-50 italic animate-pulse">Chargement de la collection...</div>
           ) : (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {filteredProjects.map((p, i) => (
@@ -230,9 +248,7 @@ export default function Page() {
           index={activeIndex}
           onClose={() => setActiveIndex(null)}
           onUpdate={(updated) => {
-            setProjects((prev) =>
-              prev.map((p) => (p.id === updated.id ? updated : p))
-            );
+            setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
           }}
           availableTypes={availableTypes}
           availableCategories={availableCategories}

@@ -1,9 +1,12 @@
+"use client";
+
 import type { Project } from "@/lib/projects";
 
 type Props = {
   project: Project;
   onClick: () => void;
-  isDarkMode: boolean; // ✅ ajouté
+  onToggleFavorite?: (e: React.MouseEvent) => void; // ✅ Ajouté pour gérer le clic étoile
+  isDarkMode: boolean;
 };
 
 const truncate30 = (s?: string) => {
@@ -11,10 +14,11 @@ const truncate30 = (s?: string) => {
   return v.length > 30 ? v.slice(0, 30) + "…" : v;
 };
 
-export default function ProjectCard({ project, onClick, isDarkMode }: Props) {
+export default function ProjectCard({ project, onClick, onToggleFavorite, isDarkMode }: Props) {
+  // Styles dynamiques
   const cardClasses = isDarkMode
-    ? "cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm transition hover:shadow-md"
-    : "cursor-pointer rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:shadow-md";
+    ? "group relative cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm transition hover:shadow-md hover:border-slate-700"
+    : "group relative cursor-pointer rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:shadow-md hover:border-neutral-300";
 
   const titleClasses = isDarkMode ? "text-white" : "text-neutral-900";
   const descClasses = isDarkMode ? "text-slate-300" : "text-neutral-600";
@@ -24,7 +28,23 @@ export default function ProjectCard({ project, onClick, isDarkMode }: Props) {
 
   return (
     <article onClick={onClick} className={cardClasses}>
-      <h3 className={`text-lg font-semibold ${titleClasses}`}>
+      
+      {/* ⭐ BOUTON ÉTOILE (Apparaît au survol ou si déjà favori) */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation(); // Évite d'ouvrir le viewer
+          if (onToggleFavorite) onToggleFavorite(e);
+        }}
+        className={`absolute right-4 top-4 text-xl transition-all duration-200 
+          ${project.favorite 
+            ? "opacity-100 scale-110" 
+            : "opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100"
+          }`}
+      >
+        {project.favorite ? "⭐" : "☆"}
+      </button>
+
+      <h3 className={`text-lg font-semibold pr-6 ${titleClasses}`}>
         {project.title}
       </h3>
 

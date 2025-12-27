@@ -73,7 +73,7 @@ export default function Page() {
   }, []);
 
   /* =====================
-   * VALEURS DISPONIBLESS
+   * VALEURS DISPONIBLES
    * ===================== */
   const availableTypes = useMemo<ProjectType[]>(() => {
     return PROJECT_TYPES.filter((t) => projects.some((p) => p.type === t));
@@ -84,6 +84,43 @@ export default function Page() {
       projects.some((p) => p.categories.includes(c))
     );
   }, [projects]);
+
+  /* =====================
+   * ACTIONS
+   * ===================== */
+  const toggleProjectFavorite = async (project: Project) => {
+    const newStatus = !project.favorite;
+    console.log(`[Front] Tentative de favori pour ${project.title} -> ${newStatus}`);
+
+    // 1. Mise à jour locale immédiate (Optimistic UI)
+    setProjects((prev) =>
+      prev.map((p) => (p.id === project.id ? { ...p, favorite: newStatus } : p))
+    );
+
+    // 2. Sauvegarde réelle dans Airtable via PUT
+    try {
+      const res = await fetch("/api/projects", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          id: project.id, 
+          favorite: newStatus 
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Erreur API lors de la mise à jour");
+      }
+      
+      console.log("[Front] Airtable mis à jour avec succès");
+    } catch (err) {
+      console.error("[Front] Erreur sauvegarde Airtable:", err);
+      // Rollback en cas d'échec pour synchroniser l'UI avec la réalité
+      setProjects((prev) =>
+        prev.map((p) => (p.id === project.id ? project : p))
+      );
+    }
+  };
 
   /* =====================
    * FILTRAGE
@@ -117,25 +154,42 @@ export default function Page() {
     <div
       className={
         isDarkMode
-          ? "min-h-screen bg-slate-950 text-white"
-          : "min-h-screen bg-neutral-50 text-neutral-900"
+          ? "min-h-screen bg-slate-950 text-white transition-colors duration-300"
+          : "min-h-screen bg-neutral-50 text-neutral-900 transition-colors duration-300"
       }
     >
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        {/* HEADER */}
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">ToutesMesApps</h1>
-            <p className="text-sm opacity-70">Dashboard connecté à Airtable</p>
+      <div className="mx-auto max-w-[1600px] px-8 py-8">
+        
+        {/* HEADER & FILTRES : ALIGNÉS HORIZONTALEMENT */}
+        <header className="mb-12 flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-6 shrink-0">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">ToutesMesApps</h1>
+              <p className="text-sm opacity-50">Dashboard connecté à Airtable</p>
+            </div>
+            
+            <button
+              onClick={() => setIsDarkMode((v) => !v)}
+              className="rounded-full border border-current opacity-60 px-3 py-3 text-lg hover:opacity-100 transition-all active:scale-90"
+              title="Changer le thème"
+            >
+              {isDarkMode ? "☀️" : "🌙"}
+            </button>
           </div>
 
-          <button
-            onClick={() => setIsDarkMode((v) => !v)}
-            className="rounded-xl border px-3 py-2 text-sm hover:opacity-80"
-          >
-            {isDarkMode ? "☀️ Clair" : "🌙 Sombre"}
-          </button>
-        </div>
+          {/* Barre de filtres horizontale */}
+          <div className="flex-1 w-full overflow-x-auto pb-2 lg:pb-0">
+            <Filters
+              value={filters}
+              onChange={setFilters}
+              total={projects.length}
+              shown={filteredProjects.length}
+              isDarkMode={isDarkMode}
+              availableTypes={availableTypes}
+              availableCategories={availableCategories}
+            />
+          </div>
+        </header>
 
         {error && (
           <div className="mb-6 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
@@ -143,41 +197,33 @@ export default function Page() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
-          {/* FILTRES */}
-          <Filters
-            value={filters}
-            onChange={setFilters}
-            total={projects.length}
-            shown={filteredProjects.length}
-            isDarkMode={isDarkMode}
-            availableTypes={availableTypes}
-            availableCategories={availableCategories}
-          />
-
-          {/* LISTE */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {loading ? (
-              <div className="rounded-xl border p-4">Chargement…</div>
-            ) : filteredProjects.length === 0 ? (
-              <div className="rounded-xl border p-4">
-                Aucun projet ne correspond aux filtres.
-              </div>
-            ) : (
-              filteredProjects.map((p, i) => (
+        {/* GRILLE DE PROJETS (4 COLONNES SUR LARGE SCREEN) */}
+        <main className="w-full">
+          {loading ? (
+            <div className="flex h-64 items-center justify-center rounded-2xl border-2 border-dashed border-neutral-300 opacity-50">
+              <span className="animate-pulse font-medium">Chargement de la collection...</span>
+            </div>
+          ) : filteredProjects.length === 0 ? (
+            <div className="flex h-64 items-center justify-center rounded-2xl border-2 border-dashed border-neutral-300 opacity-50">
+              <p>Aucun projet ne correspond à vos critères.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {filteredProjects.map((p, i) => (
                 <ProjectCard
                   key={p.id}
                   project={p}
                   isDarkMode={isDarkMode}
                   onClick={() => setActiveIndex(i)}
+                  onToggleFavorite={() => toggleProjectFavorite(p)}
                 />
-              ))
-            )}
-          </div>
-        </div>
+              ))}
+            </div>
+          )}
+        </main>
       </div>
 
-      {/* VIEWER */}
+      {/* VIEWER MODAL */}
       {activeIndex !== null && (
         <ProjectViewer
           projects={filteredProjects}

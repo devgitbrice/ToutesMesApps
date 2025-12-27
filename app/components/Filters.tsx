@@ -16,17 +16,15 @@ interface FiltersProps {
   availableCategories: string[];
 }
 
-// utils
 const norm = (s: string) => s.trim().toLowerCase();
 const dedupeNormalized = (arr: string[]) => {
-  const map = new Map<string, string>(); // normalized -> original (first seen)
+  const map = new Map<string, string>();
   for (const raw of arr) {
     const v = (raw ?? "").toString().trim();
     if (!v) continue;
     const k = norm(v);
     if (!map.has(k)) map.set(k, v);
   }
-  // return in alpha order (based on normalized)
   return Array.from(map.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([, original]) => original);
@@ -41,13 +39,10 @@ export default function Filters({
   availableTypes,
   availableCategories,
 }: FiltersProps) {
-  // ✅ normalisation + dédoublonnage pour éviter "Pro"/"pro" en double, etc.
   const types = dedupeNormalized(availableTypes);
   const categories = dedupeNormalized(availableCategories);
 
-  // --- TOGGLES ---
   const toggleType = (type: string) => {
-    // on stocke la clé normalisée dans le state (plus stable)
     const key = norm(type);
     onChange({
       ...value,
@@ -64,112 +59,74 @@ export default function Filters({
   };
 
   const toggleFavoriteOnly = () => {
-    onChange({
-      ...value,
-      favoriteOnly: !value.favoriteOnly,
-    });
+    onChange({ ...value, favoriteOnly: !value.favoriteOnly });
   };
 
-  // --- STYLES ---
-  const containerClasses = isDarkMode
-    ? "rounded-2xl border border-slate-800 bg-slate-900 p-5 transition-colors h-fit"
-    : "rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition-colors h-fit";
-
-  const titleClasses = isDarkMode ? "text-white" : "text-neutral-900";
-  const textClasses = isDarkMode ? "text-slate-300" : "text-neutral-700";
-  const subTitleClasses = isDarkMode ? "text-slate-500" : "text-neutral-500";
+  // Styles de badges pour un look "App"
+  const getBadgeClass = (active: boolean) => {
+    if (active) {
+      return "bg-blue-600 text-white border-blue-500 shadow-sm";
+    }
+    return isDarkMode 
+      ? "bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700" 
+      : "bg-neutral-100 text-neutral-600 border-neutral-200 hover:bg-neutral-200";
+  };
 
   return (
-    <div className={containerClasses}>
-      <h2 className={`text-lg font-semibold ${titleClasses}`}>Filtres</h2>
+    <div className={`flex flex-wrap items-center gap-x-8 gap-y-4 ${isDarkMode ? "text-white" : "text-neutral-900"}`}>
+      
+      {/* 🧩 TYPES & FAVORIS (Groupe 1) */}
+      <div className="flex items-center gap-3">
+        {/* ⭐ FAVORIS */}
+        <button
+          onClick={toggleFavoriteOnly}
+          className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-medium transition-all ${getBadgeClass(value.favoriteOnly)}`}
+        >
+          <span>{value.favoriteOnly ? "⭐" : "☆"}</span>
+          <span>Favoris</span>
+        </button>
 
-      <div
-        className={`mb-4 text-sm ${
-          isDarkMode ? "text-slate-400" : "text-neutral-600"
-        }`}
-      >
-        {shown} / {total} projets
+        <div className="h-6 w-px bg-current opacity-10 mx-1" />
+
+        {/* TYPES */}
+        <div className="flex gap-2">
+          {types.map((type) => {
+            const key = norm(type);
+            const active = !!value.types[key];
+            return (
+              <button
+                key={key}
+                onClick={() => toggleType(type)}
+                className={`rounded-full border px-4 py-1.5 text-xs font-medium transition-all capitalize ${getBadgeClass(active)}`}
+              >
+                {type}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="space-y-6">
-        {/* ⭐ FAVORI */}
-        <div>
-          <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
-            Favori
-          </h3>
+      {/* 🏷️ CATÉGORIES (Groupe 2) */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className={`text-[10px] font-bold uppercase tracking-widest opacity-40 mr-1`}>Catégories</span>
+        {categories.map((cat) => {
+          const key = norm(cat);
+          const active = !!value.categories[key];
+          return (
+            <button
+              key={key}
+              onClick={() => toggleCategory(cat)}
+              className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-all capitalize ${getBadgeClass(active)}`}
+            >
+              {cat}
+            </button>
+          );
+        })}
+      </div>
 
-          <label className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}>
-            <input
-              type="checkbox"
-              checked={value.favoriteOnly}
-              onChange={toggleFavoriteOnly}
-              className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span>Afficher uniquement les favoris</span>
-          </label>
-        </div>
-
-        {/* 🧩 TYPES */}
-        <div>
-          <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
-            Type
-          </h3>
-
-          <div className="space-y-2">
-            {types.length === 0 && (
-              <p className={`text-xs italic ${subTitleClasses}`}>Aucun type</p>
-            )}
-
-            {types.map((type) => {
-              const key = norm(type);
-              return (
-                <label
-                  key={key}
-                  className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={!!value.types[key]}
-                    onChange={() => toggleType(type)}
-                    className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="capitalize">{type}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 🏷️ CATÉGORIES */}
-        <div>
-          <h3 className={`mb-3 text-sm font-medium uppercase tracking-wider ${subTitleClasses}`}>
-            Catégories
-          </h3>
-
-          <div className="space-y-2">
-            {categories.length === 0 && (
-              <p className={`text-xs italic ${subTitleClasses}`}>Aucune catégorie</p>
-            )}
-
-            {categories.map((cat) => {
-              const key = norm(cat);
-              return (
-                <label
-                  key={key}
-                  className={`flex items-center gap-2 text-sm ${textClasses} cursor-pointer hover:opacity-80`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={!!value.categories[key]}
-                    onChange={() => toggleCategory(cat)}
-                    className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="capitalize">{cat}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
+      {/* COMPTEUR (À droite) */}
+      <div className="ml-auto text-[11px] font-medium opacity-50">
+        {shown} / {total} apps
       </div>
     </div>
   );

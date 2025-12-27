@@ -28,6 +28,7 @@ function buildTtsText(title: string, description: string) {
 function ProjectSlide({
   project,
   onUpdate,
+  onDelete,
   onPlay,
   onStop,
   audio,
@@ -39,6 +40,7 @@ function ProjectSlide({
 }: {
   project: Project;
   onUpdate: (p: Project) => void;
+  onDelete: (id: string) => void;
   onPlay: (text: string, projectId: string) => void;
   onStop: () => void;
   audio: { loading: boolean; playing: boolean; projectId: string | null };
@@ -48,7 +50,6 @@ function ProjectSlide({
   onToggleAuto: (payload: { enabled: boolean; index: number; text: string; projectId: string }) => void;
   slideIndex: number;
 }) {
-  // États locaux pour une saisie fluide
   const [title, setTitle] = useState(project.title);
   const [description, setDescription] = useState(project.description);
   const [githubLink, setGithubLink] = useState(project.githubLink || "");
@@ -57,13 +58,16 @@ function ProjectSlide({
   const [selectedCats, setSelectedCats] = useState<ProjectCategory[]>(project.categories || []);
   const [newCatName, setNewCatName] = useState("");
 
-  // 1. Debounce des champs texte (1 seconde après l'arrêt de la saisie)
+  // Gestion de la suppression
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteInput, setDeleteInput] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const debouncedTitle = useDebounce(title, 1000);
   const debouncedDesc = useDebounce(description, 1000);
   const debouncedGithub = useDebounce(githubLink, 1000);
   const debouncedSite = useDebounce(siteLink, 1000);
 
-  // 2. Reset des états quand on change de projet (important pour le scroll)
   useEffect(() => {
     setTitle(project.title);
     setDescription(project.description);
@@ -73,7 +77,6 @@ function ProjectSlide({
     setSelectedCats(project.categories || []);
   }, [project.id]);
 
-  // 3. Effet de sauvegarde automatique vers page.tsx -> API
   useEffect(() => {
     const hasChanged = 
       debouncedTitle !== project.title ||
@@ -112,6 +115,27 @@ function ProjectSlide({
     setNewCatName("");
   };
 
+  const handleDeleteConfirm = async () => {
+    if (deleteInput !== "SUPPRIMER") return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch("/api/projects", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: project.id }),
+      });
+      if (res.ok) {
+        onDelete(project.id);
+      } else {
+        alert("Erreur lors de la suppression");
+        setIsDeleting(false);
+      }
+    } catch (e) {
+      console.error(e);
+      setIsDeleting(false);
+    }
+  };
+
   const getLinkStyle = (value: string) => {
     if (!value || value.trim() === "")
       return "bg-white/5 border border-dashed border-white/20 text-white/40";
@@ -125,7 +149,6 @@ function ProjectSlide({
     <div className="flex h-full w-full items-center justify-center p-4">
       <div className="flex w-full max-w-5xl flex-col items-center text-center">
         
-        {/* Header : Titre + Liens */}
         <div className="mb-6 flex flex-wrap items-center justify-center gap-4">
           <button
             onClick={() => onUpdate({ ...project, favorite: !project.favorite })}
@@ -173,10 +196,15 @@ function ProjectSlide({
             >
               {autoMode ? "Auto ON" : "Auto Mode"}
             </button>
+            <button 
+              onClick={() => setShowDeleteModal(true)}
+              className="rounded-full bg-red-600/20 px-6 py-2 text-xs font-bold text-red-500 hover:bg-red-600 hover:text-white transition-all"
+            >
+              SUPPRIMER
+            </button>
           </div>
         </div>
 
-        {/* Description */}
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -185,7 +213,6 @@ function ProjectSlide({
           placeholder="Décrivez votre application ici..."
         />
 
-        {/* Type Selection */}
         <div className="mb-8 flex flex-col gap-3">
           <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Classification</span>
           <div className="flex gap-4">
@@ -203,7 +230,6 @@ function ProjectSlide({
           </div>
         </div>
 
-        {/* Categories */}
         <div className="flex flex-col items-center gap-4">
           <div className="flex flex-wrap justify-center gap-2 max-w-4xl">
             {Array.from(new Set([...availableCategories, ...selectedCats])).map((cat) => (
@@ -237,6 +263,43 @@ function ProjectSlide({
           <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
           <span className="text-[10px] font-bold uppercase tracking-widest">Synchronisation Cloud Active</span>
         </div>
+
+        {/* --- MODAL SUPPRESSION --- */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+            <div className="w-full max-w-md p-8 text-center border border-red-500/30 rounded-3xl bg-neutral-900 shadow-2xl">
+              <h2 className="text-2xl font-bold text-red-500 mb-4">Action Irréversible</h2>
+              <p className="text-gray-400 mb-6">
+                Tapez <span className="text-white font-mono font-bold select-none">SUPPRIMER</span> pour confirmer la suppression définitive de <strong>{project.title}</strong>.
+              </p>
+              
+              <input
+                autoFocus
+                type="text"
+                value={deleteInput}
+                onChange={(e) => setDeleteInput(e.target.value)}
+                className="w-full bg-white/5 border-2 border-red-500/50 rounded-xl px-4 py-3 text-center text-xl font-bold uppercase tracking-widest text-white outline-none focus:border-red-500 transition-all"
+                placeholder="..."
+              />
+
+              <div className="flex gap-4 mt-8">
+                <button 
+                  onClick={() => { setShowDeleteModal(false); setDeleteInput(""); }}
+                  className="flex-1 py-3 text-sm font-bold text-white/50 hover:text-white transition-colors"
+                >
+                  ANNULER
+                </button>
+                <button 
+                  disabled={deleteInput !== "SUPPRIMER" || isDeleting}
+                  onClick={handleDeleteConfirm}
+                  className="flex-1 py-3 bg-red-600 rounded-xl text-sm font-bold text-white disabled:opacity-20 transition-all hover:bg-red-500 shadow-lg shadow-red-900/20"
+                >
+                  {isDeleting ? "CHARGEMENT..." : "CONFIRMER"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -247,6 +310,7 @@ export default function ProjectViewer({
   index,
   onClose,
   onUpdate,
+  onDelete, // Nouvelle prop passée par page.tsx
   availableTypes = [],
   availableCategories = [],
 }: {
@@ -254,6 +318,7 @@ export default function ProjectViewer({
   index: number;
   onClose: () => void;
   onUpdate: (p: Project) => void;
+  onDelete: (id: string) => void;
   availableTypes: ProjectType[];
   availableCategories: ProjectCategory[];
 }) {
@@ -336,6 +401,10 @@ export default function ProjectViewer({
             <ProjectSlide
               project={p}
               onUpdate={onUpdate}
+              onDelete={(id) => {
+                stopAudio();
+                onDelete(id);
+              }}
               availableTypes={availableTypes}
               availableCategories={availableCategories}
               audio={audio}

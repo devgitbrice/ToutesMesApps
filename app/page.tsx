@@ -20,7 +20,7 @@ const DEFAULT_FILTERS: FiltersState = {
   types: {},
   categories: {},
   favoriteOnly: false,
-  search: "", // Cette ligne doit être présente
+  search: "", 
 };
 
 export default function Page() {
@@ -33,7 +33,7 @@ export default function Page() {
   // ✅ Mode nuit par défaut
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // ✅ Initialisation correcte
+  // ✅ Initialisation des filtres
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS);
 
   /* =====================
@@ -142,6 +142,14 @@ export default function Page() {
     } catch (err) {
       console.error("❌ Erreur réseau :", err);
     }
+  };
+
+  // ✅ NOUVELLE ACTION : Suppression
+  const handleDeleteProject = (id: string) => {
+    // 1. On retire le projet de la liste locale
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    // 2. On ferme le viewer
+    setActiveIndex(null);
   };
 
   /* =====================
@@ -263,6 +271,7 @@ export default function Page() {
           index={activeIndex}
           onClose={() => setActiveIndex(null)}
           onUpdate={handleUpdateProject}
+          onDelete={handleDeleteProject} // ✅ Prop ajoutée
           availableTypes={availableTypes}
           availableCategories={availableCategories}
         />

@@ -7,7 +7,7 @@ import ProjectCard from "./components/ProjectCard";
 import ProjectViewer from "./components/ProjectViewer";
 
 // ✅ TYPES + HELPERS OFFICIELS
-import type { Project, ProjectType, ProjectCategory } from "@/lib/projects";
+import type { Project, ProjectCategory, ProjectType } from "@/lib/projects";
 import {
   toProjectType,
   toProjectCategories,
@@ -22,9 +22,10 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  // ✅ CHANGEMENT : Mode nuit par défaut (true)
+  // ✅ Mode nuit par défaut
   const [isDarkMode, setIsDarkMode] = useState(true);
 
+  // ✅ État initial corrigé (search ajouté pour éviter l'erreur de build)
   const [filters, setFilters] = useState<FiltersState>({
     types: {},
     categories: {},
@@ -120,6 +121,7 @@ export default function Page() {
   };
 
   const handleUpdateProject = async (updated: Project) => {
+    // Update local immédiat
     setProjects((prev) =>
       prev.map((p) => (p.id === updated.id ? updated : p))
     );
@@ -210,7 +212,6 @@ export default function Page() {
               <p className="text-sm opacity-50 font-medium">Dashboard Airtable</p>
             </div>
             
-            {/* BOUTON TOGGLE : Inversé pour le mode nuit par défaut */}
             <button
               onClick={() => setIsDarkMode((v) => !v)}
               className="rounded-full border border-current opacity-40 px-2 py-2 text-sm hover:opacity-100 transition-all active:rotate-12"

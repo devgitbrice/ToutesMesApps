@@ -22,12 +22,14 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  // ✅ CHANGEMENT : Mode nuit par défaut (true)
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   const [filters, setFilters] = useState<FiltersState>({
     types: {},
     categories: {},
     favoriteOnly: false,
+    search: "", 
   });
 
   /* =====================
@@ -76,7 +78,6 @@ export default function Page() {
    * ACTIONS
    * ===================== */
 
-  // ✅ CRÉER UN NOUVEAU PROJET ET L'OUVRIR
   const handleCreateProject = async () => {
     try {
       setIsCreating(true);
@@ -94,7 +95,7 @@ export default function Page() {
 
       if (!res.ok) throw new Error("Erreur lors de la création");
 
-      const data = await res.json(); // On récupère l'ID généré par Airtable
+      const data = await res.json();
 
       const newProject: Project = {
         id: data.id,
@@ -107,10 +108,7 @@ export default function Page() {
         favorite: false,
       };
 
-      // Ajouter au début de la liste
       setProjects((prev) => [newProject, ...prev]);
-      
-      // Ouvrir le viewer immédiatement (index 0 puisque ajouté au début)
       setActiveIndex(0);
 
     } catch (err) {
@@ -121,31 +119,40 @@ export default function Page() {
     }
   };
 
-  const toggleProjectFavorite = async (project: Project) => {
-    const newStatus = !project.favorite;
-    
+  const handleUpdateProject = async (updated: Project) => {
     setProjects((prev) =>
-      prev.map((p) => (p.id === project.id ? { ...p, favorite: newStatus } : p))
+      prev.map((p) => (p.id === updated.id ? updated : p))
     );
 
     try {
       const res = await fetch("/api/projects", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          id: project.id, 
-          favorite: newStatus 
-        }),
+        body: JSON.stringify(updated),
       });
 
-      if (!res.ok) throw new Error("Erreur API");
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.warn("⚠️ Airtable refuse la mise à jour :", errorData);
+      }
     } catch (err) {
-      console.error("Erreur sauvegarde favori:", err);
-      setProjects((prev) =>
-        prev.map((p) => (p.id === project.id ? project : p))
-      );
+      console.error("❌ Erreur réseau :", err);
     }
   };
+
+  /* =====================
+   * VALEURS DISPONIBLES
+   * ===================== */
+  
+  const availableTypes = useMemo(() => {
+    return PROJECT_TYPES.filter((t) => projects.some((p) => p.type === t));
+  }, [projects]);
+  
+  const availableCategories = useMemo(() => {
+      const allUsedCats = projects.flatMap(p => p.categories);
+      const combined = new Set([...PROJECT_CATEGORIES, ...allUsedCats]);
+      return Array.from(combined).sort() as ProjectCategory[];
+  }, [projects]);
 
   /* =====================
    * FILTRAGE
@@ -159,34 +166,38 @@ export default function Page() {
       .filter(([, v]) => v)
       .map(([k]) => k as ProjectCategory);
 
+    const searchTerm = (filters.search || "").toLowerCase().trim();
+
     return projects.filter((p) => {
       const typeOk = activeTypes.length === 0 || activeTypes.includes(p.type);
       const catOk = activeCats.length === 0 || activeCats.some((c) => p.categories.includes(c));
       const favOk = !filters.favoriteOnly || p.favorite === true;
-      return typeOk && catOk && favOk;
+      
+      const searchOk = !searchTerm || 
+        p.title.toLowerCase().includes(searchTerm) || 
+        (p.description && p.description.toLowerCase().includes(searchTerm));
+
+      return typeOk && catOk && favOk && searchOk;
     });
   }, [projects, filters]);
-
-  // Valeurs pour les filtres
-  const availableTypes = useMemo(() => PROJECT_TYPES.filter((t) => projects.some((p) => p.type === t)), [projects]);
-  const availableCategories = useMemo(() => PROJECT_CATEGORIES.filter((c) => projects.some((p) => p.categories.includes(c))), [projects]);
 
   /* =====================
    * UI
    * ===================== */
   return (
-    <div className={isDarkMode ? "min-h-screen bg-slate-950 text-white" : "min-h-screen bg-neutral-50 text-neutral-900"}>
+    <div className={isDarkMode 
+      ? "min-h-screen bg-slate-950 text-white transition-colors duration-500" 
+      : "min-h-screen bg-neutral-50 text-neutral-900 transition-colors duration-500"
+    }>
       <div className="mx-auto max-w-[1600px] px-8 py-8">
         
-        {/* HEADER */}
-        <header className="mb-12 flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+        <header className="mb-12 flex flex-col gap-8 lg:flex-row lg:items-center">
+          
           <div className="flex items-center gap-6 shrink-0">
-            
-            {/* ✅ BOUTON NOUVEAU PROJET */}
             <button
               onClick={handleCreateProject}
               disabled={isCreating}
-              className="group flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-50"
             >
               <span className="text-lg leading-none">{isCreating ? "..." : "+"}</span>
               <span>Nouveau Projet</span>
@@ -196,18 +207,20 @@ export default function Page() {
 
             <div>
               <h1 className="text-3xl font-bold tracking-tight">ToutesMesApps</h1>
-              <p className="text-sm opacity-50">Dashboard Airtable</p>
+              <p className="text-sm opacity-50 font-medium">Dashboard Airtable</p>
             </div>
             
+            {/* BOUTON TOGGLE : Inversé pour le mode nuit par défaut */}
             <button
               onClick={() => setIsDarkMode((v) => !v)}
-              className="rounded-full border border-current opacity-60 px-3 py-3 text-lg hover:opacity-100 transition-all active:scale-90"
+              className="rounded-full border border-current opacity-40 px-2 py-2 text-sm hover:opacity-100 transition-all active:rotate-12"
+              title={isDarkMode ? "Passer en mode jour" : "Passer en mode nuit"}
             >
               {isDarkMode ? "☀️" : "🌙"}
             </button>
           </div>
 
-          <div className="flex-1 w-full overflow-x-auto pb-2 lg:pb-0">
+          <div className="flex-1 w-full overflow-x-auto">
             <Filters
               value={filters}
               onChange={setFilters}
@@ -233,7 +246,7 @@ export default function Page() {
                   project={p}
                   isDarkMode={isDarkMode}
                   onClick={() => setActiveIndex(i)}
-                  onToggleFavorite={() => toggleProjectFavorite(p)}
+                  onToggleFavorite={() => handleUpdateProject({ ...p, favorite: !p.favorite })}
                 />
               ))}
             </div>
@@ -241,15 +254,12 @@ export default function Page() {
         </main>
       </div>
 
-      {/* VIEWER MODAL */}
       {activeIndex !== null && (
         <ProjectViewer
           projects={filteredProjects}
           index={activeIndex}
           onClose={() => setActiveIndex(null)}
-          onUpdate={(updated) => {
-            setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-          }}
+          onUpdate={handleUpdateProject}
           availableTypes={availableTypes}
           availableCategories={availableCategories}
         />

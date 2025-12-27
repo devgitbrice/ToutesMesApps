@@ -54,7 +54,9 @@ export async function GET() {
     const records = await base("Projects")
       .select({
         view: "Grid view",
-        sort: [{ field: "Title", direction: "asc" }],
+        // ✅ TRI MODIFIÉ : On utilise le champ "Created" (Created time dans Airtable)
+        // pour que les nouveaux projets restent en haut de la liste après refresh.
+        sort: [{ field: "Created", direction: "desc" }],
       })
       .all();
 
@@ -76,7 +78,7 @@ export async function GET() {
   }
 }
 
-// 2. PUT : Mettre à jour (C'est ici que l'étoile est gérée)
+// 2. PUT : Mettre à jour (Favoris et éditions)
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
@@ -90,7 +92,6 @@ export async function PUT(request: Request) {
 
     const fields: Record<string, any> = {};
 
-    // Détection dynamique des champs à modifier
     if ("title" in body) fields.Title = asString(body.title);
     if ("description" in body) fields.Description = asString(body.description);
     if ("type" in body) fields.Type = normalizeTypeIn(body.type);
@@ -98,7 +99,6 @@ export async function PUT(request: Request) {
     if ("githubLink" in body) fields.GithubLink = asString(body.githubLink);
     if ("siteLink" in body) fields.SiteLink = asString(body.siteLink);
     
-    // ✅ Mise à jour du favori
     if ("favorite" in body) {
       fields.favorite = asBool(body.favorite);
     }
@@ -107,20 +107,15 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
-    console.log(`📤 [API PUT] Tentative d'update Airtable pour l'ID ${id} avec :`, fields);
-
-    // Exécution de la mise à jour
+    console.log(`📤 [API PUT] Update Airtable ID ${id} :`, fields);
     await base("Projects").update([{ id, fields }]);
 
-    console.log("✅ [API PUT] Airtable mis à jour avec succès");
+    console.log("✅ [API PUT] Airtable mis à jour");
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
     console.error("❌ ERREUR AIRTABLE PUT :", error);
-    
-    // Si Airtable renvoie une erreur spécifique (ex: nom de colonne faux)
-    const errorMsg = error?.message || "Erreur sauvegarde";
-    return NextResponse.json({ error: errorMsg }, { status: 500 });
+    return NextResponse.json({ error: error?.message || "Erreur sauvegarde" }, { status: 500 });
   }
 }
 

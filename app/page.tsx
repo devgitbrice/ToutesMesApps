@@ -15,8 +15,8 @@ import {
   PROJECT_CATEGORIES,
 } from "@/lib/projects";
 
-// ✅ CORRECTION DEFINITIVE POUR VERCEL
-// Cet objet doit correspondre strictement à l'interface FiltersState
+// ✅ CORRECTION ABSOLUE POUR VERCEL
+// L'objet doit impérativement contenir la clé 'search'
 const DEFAULT_FILTERS: FiltersState = {
   types: {},
   categories: {},

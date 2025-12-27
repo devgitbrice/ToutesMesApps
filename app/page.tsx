@@ -73,7 +73,7 @@ export default function Page() {
   }, []);
 
   /* =====================
-   * VALEURS DISPONIBLES
+   * VALEURS DISPONIBLESS
    * ===================== */
   const availableTypes = useMemo<ProjectType[]>(() => {
     return PROJECT_TYPES.filter((t) => projects.some((p) => p.type === t));

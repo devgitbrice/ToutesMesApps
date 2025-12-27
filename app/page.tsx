@@ -15,14 +15,13 @@ import {
   PROJECT_CATEGORIES,
 } from "@/lib/projects";
 
-/** * ✅ CORRECTION CRITIQUE POUR VERCEL :
- * L'objet ci-dessous doit contenir toutes les propriétés de FiltersState
- */
+// ✅ CORRECTION DEFINITIVE POUR VERCEL
+// Cet objet doit correspondre strictement à l'interface FiltersState
 const DEFAULT_FILTERS: FiltersState = {
   types: {},
   categories: {},
   favoriteOnly: false,
-  search: "", // <--- Cette ligne manquante causait l'erreur de build
+  search: "", 
 };
 
 export default function Page() {
@@ -35,7 +34,7 @@ export default function Page() {
   // ✅ Mode nuit par défaut
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // ✅ Utilisation de l'objet de base corrigé
+  // ✅ Utilisation de la constante corrigée
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS);
 
   /* =====================

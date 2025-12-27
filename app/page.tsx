@@ -15,13 +15,12 @@ import {
   PROJECT_CATEGORIES,
 } from "@/lib/projects";
 
-// ✅ CORRECTION ABSOLUE POUR VERCEL
-// L'objet doit impérativement contenir la clé 'search'
+// ✅ CORRECTION CRITIQUE POUR VERCEL
 const DEFAULT_FILTERS: FiltersState = {
   types: {},
   categories: {},
   favoriteOnly: false,
-  search: "", 
+  search: "", // Cette ligne doit être présente
 };
 
 export default function Page() {
@@ -34,7 +33,7 @@ export default function Page() {
   // ✅ Mode nuit par défaut
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // ✅ Utilisation de la constante corrigée
+  // ✅ Initialisation correcte
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS);
 
   /* =====================

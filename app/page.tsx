@@ -15,6 +15,16 @@ import {
   PROJECT_CATEGORIES,
 } from "@/lib/projects";
 
+/** * ✅ CORRECTION CRITIQUE POUR VERCEL :
+ * L'objet ci-dessous doit contenir toutes les propriétés de FiltersState
+ */
+const DEFAULT_FILTERS: FiltersState = {
+  types: {},
+  categories: {},
+  favoriteOnly: false,
+  search: "", // <--- Cette ligne manquante causait l'erreur de build
+};
+
 export default function Page() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -25,13 +35,8 @@ export default function Page() {
   // ✅ Mode nuit par défaut
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // ✅ État initial corrigé (search ajouté pour éviter l'erreur de build)
-  const [filters, setFilters] = useState<FiltersState>({
-    types: {},
-    categories: {},
-    favoriteOnly: false,
-    search: "", 
-  });
+  // ✅ Utilisation de l'objet de base corrigé
+  const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS);
 
   /* =====================
    * FETCH PROJECTS
@@ -121,7 +126,6 @@ export default function Page() {
   };
 
   const handleUpdateProject = async (updated: Project) => {
-    // Update local immédiat
     setProjects((prev) =>
       prev.map((p) => (p.id === updated.id ? updated : p))
     );

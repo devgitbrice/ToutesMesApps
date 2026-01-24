@@ -14,16 +14,10 @@ export type ProjectCategory = (typeof PROJECT_CATEGORIES)[number];
  * Helpers runtime (safe)
  * ===================== */
 
-/**
- * Vérifie qu'une valeur est un ProjectType valide
- */
 export function isProjectType(v: unknown): v is ProjectType {
   return typeof v === "string" && PROJECT_TYPES.includes(v as ProjectType);
 }
 
-/**
- * Vérifie qu'une valeur est une ProjectCategory valide
- */
 export function isProjectCategory(v: unknown): v is ProjectCategory {
   return (
     typeof v === "string" &&
@@ -31,9 +25,6 @@ export function isProjectCategory(v: unknown): v is ProjectCategory {
   );
 }
 
-/**
- * Normalise un type (utile si la source n'est pas fiable : Airtable, API…)
- */
 export function toProjectType(
   v: unknown,
   fallback: ProjectType = "perso"
@@ -41,9 +32,6 @@ export function toProjectType(
   return isProjectType(v) ? v : fallback;
 }
 
-/**
- * Normalise un tableau de catégories
- */
 export function toProjectCategories(v: unknown): ProjectCategory[] {
   if (!Array.isArray(v)) return [];
   return v.filter(isProjectCategory);
@@ -71,6 +59,7 @@ export type Project = {
   // Liens (optionnels) – versions Airtable
   githubLink?: string;
   siteLink?: string;
+  geminiLink?: string; // ✅ Ajout du champ Gemini
 
   // UI / viewer
   images?: string[];

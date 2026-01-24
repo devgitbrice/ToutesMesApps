@@ -34,6 +34,21 @@ export default function ProjectViewer({
 
   useEffect(() => { autoModeRef.current = autoMode; }, [autoMode]);
 
+  /* =========================================================
+   * ✅ LOCK BODY SCROLL (Correction iOS)
+   * ========================================================= */
+  useEffect(() => {
+    // 1. On fige le body quand le viewer s'ouvre
+    document.body.classList.add("viewer-open");
+    document.body.style.overflow = "hidden"; // Sécurité double
+
+    // 2. Nettoyage quand on ferme
+    return () => {
+      document.body.classList.remove("viewer-open");
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   const stopAudio = () => {
     playTokenRef.current++;
     if (ttsAbortRef.current) ttsAbortRef.current.abort();
@@ -81,15 +96,28 @@ export default function ProjectViewer({
   }, [index]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black">
+    // ✅ CORRECTION CSS SUR LE CONTENEUR PRINCIPAL
+    // 1. z-50 : Au dessus de tout
+    // 2. touch-action: none : Empêche le scroll de fond qui "transperce"
+    // 3. overscroll-behavior: none : Empêche le rebond élastique de la page entière
+    <div className="fixed inset-0 z-50 bg-black overscroll-none touch-none">
+      
       <button onClick={onClose} className="absolute right-8 top-8 z-50 text-white/50 hover:text-white font-bold">Fermer ✕</button>
-      <div ref={containerRef} className="flex h-full w-full overflow-x-auto snap-x snap-mandatory" style={{ scrollbarWidth: "none" }}>
+      
+      {/* ✅ CORRECTION SUR LE SCROLLER 
+         1. touch-pan-x touch-pan-y : On réactive le scroll ICI pour pouvoir slider
+         2. overscroll-x-contain : Le swipe s'arrête net aux bords (pas de retour navigateur)
+      */}
+      <div 
+        ref={containerRef} 
+        className="flex h-full w-full overflow-x-auto snap-x snap-mandatory touch-pan-x touch-pan-y overscroll-x-contain" 
+        style={{ scrollbarWidth: "none" }}
+      >
         {projects.map((p, i) => (
           <section key={p.id} className="h-full w-screen shrink-0 snap-center bg-neutral-950 text-white">
             <ProjectSlide
               project={p}
               onUpdate={onUpdate}
-              // ✅ CORRECTION ICI : Ajout du type explicite ': string' pour id
               onDelete={(id: string) => { stopAudio(); onDelete(id); }}
               availableTypes={availableTypes}
               availableCategories={availableCategories}
@@ -97,7 +125,6 @@ export default function ProjectViewer({
               onPlay={playProjectTTS}
               onStop={stopAudio}
               autoMode={autoMode}
-              // ✅ CORRECTION ICI : Ajout du type explicite ': any' pour payload pour éviter une autre erreur
               onToggleAuto={(payload: any) => {
                 if (!payload.enabled) return stopAudio();
                 setAutoMode(true);

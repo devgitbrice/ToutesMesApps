@@ -22,11 +22,12 @@ export default function ProjectViewer({
   availableCategories: ProjectCategory[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // ... (Tes refs existantes pour audio, etc. restent ici) ...
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const urlRef = useRef<string | null>(null);
   const ttsAbortRef = useRef<AbortController | null>(null);
   const playTokenRef = useRef(0);
-
   const [audio, setAudio] = useState({ loading: false, playing: false, projectId: null as string | null });
   const [autoMode, setAutoMode] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(index);
@@ -35,27 +36,58 @@ export default function ProjectViewer({
   useEffect(() => { autoModeRef.current = autoMode; }, [autoMode]);
 
   /* =========================================================
-   * ✅ LOCK ULTIME POUR iOS (La méthode "Position Fixed")
+   * 🔒 LOCK ULTIME iOS (JS INTERCEPTOR)
    * ========================================================= */
   useEffect(() => {
-    // 1. On mémorise où était l'utilisateur dans la page
-    const scrollY = window.scrollY;
+    // 1. Bloquer le scroll global
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.width = "100%";
+    document.body.style.height = "100%";
 
-    // 2. On fige le body (classe définie dans globals.css avec position: fixed)
-    document.body.classList.add("viewer-open");
-    
-    // 3. IMPORTANT : On compense le décalage du "fixed" pour ne pas remonter tout en haut visuellement
-    document.body.style.top = `-${scrollY}px`;
+    // 2. Empêcher le "Rubber Band" (Swipe retour navigateur)
+    const preventRubberBand = (e: TouchEvent) => {
+      const container = containerRef.current;
+      if (!container) return;
 
-    // 4. Nettoyage à la fermeture
+      const isScrollable = container.scrollWidth > container.clientWidth;
+      if (!isScrollable) {
+        e.preventDefault(); // Si pas de scroll possible, on tue l'événement
+        return;
+      }
+
+      // Si on est tout au début (gauche) et qu'on tire vers la droite -> Bloquer
+      if (container.scrollLeft <= 0 && e.touches[0].clientX > (e as any)._startX) {
+        e.preventDefault();
+      }
+      
+      // Si on est tout à la fin (droite) et qu'on tire vers la gauche -> Bloquer
+      const maxScroll = container.scrollWidth - container.clientWidth;
+      if (container.scrollLeft >= maxScroll && e.touches[0].clientX < (e as any)._startX) {
+        e.preventDefault();
+      }
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      (e as any)._startX = e.touches[0].clientX;
+    };
+
+    // On attache les événements directement au document pour être prioritaire
+    document.addEventListener("touchmove", preventRubberBand, { passive: false });
+    document.addEventListener("touchstart", handleTouchStart, { passive: true });
+
     return () => {
-      document.body.classList.remove("viewer-open");
-      document.body.style.top = "";
-      // 5. On remet l'utilisateur exactement où il était
-      window.scrollTo(0, scrollY);
+      // Nettoyage
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+      document.body.style.height = "";
+      document.removeEventListener("touchmove", preventRubberBand);
+      document.removeEventListener("touchstart", handleTouchStart);
     };
   }, []);
 
+  // ... (Tes fonctions audio restent identiques : stopAudio, playProjectTTS...) ...
   const stopAudio = () => {
     playTokenRef.current++;
     if (ttsAbortRef.current) ttsAbortRef.current.abort();
@@ -103,19 +135,16 @@ export default function ProjectViewer({
   }, [index]);
 
   return (
-    // ✅ CONTENEUR PRINCIPAL : Bloque tout effet élastique global
-    <div className="fixed inset-0 z-50 bg-black overscroll-none touch-none">
-      
+    <div className="fixed inset-0 z-50 bg-black overscroll-none">
       <button onClick={onClose} className="absolute right-8 top-8 z-50 text-white/50 hover:text-white font-bold">Fermer ✕</button>
       
-      {/* ✅ SCROLLER HORIZONTAL : 
-          - touch-pan-x : AUTORISE le doigt à bouger horizontalement (pour changer de slide)
-          - overscroll-x-contain : EMPÊCHE le doigt de faire bouger la page du dessous quand on arrive au bout
+      {/* On retire les classes utilitaires CSS de scroll ici pour laisser le JS gérer.
+         overflow-x-auto est nécessaire pour que ça bouge.
       */}
       <div 
         ref={containerRef} 
-        className="flex h-full w-full overflow-x-auto snap-x snap-mandatory touch-pan-x overscroll-x-contain" 
-        style={{ scrollbarWidth: "none" }}
+        className="flex h-full w-full overflow-x-auto snap-x snap-mandatory" 
+        style={{ scrollbarWidth: "none", overscrollBehaviorX: "none" }} // Inline style pour forcer
       >
         {projects.map((p, i) => (
           <section key={p.id} className="h-full w-screen shrink-0 snap-center bg-neutral-950 text-white">

@@ -21,7 +21,7 @@ export default function ProjectViewer({
   availableTypes: ProjectType[];
   availableCategories: ProjectCategory[];
 }) {
-  // Plus besoin de containerRef pour le scroll horizontal
+  const containerRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const urlRef = useRef<string | null>(null);
   const ttsAbortRef = useRef<AbortController | null>(null);
@@ -35,13 +35,17 @@ export default function ProjectViewer({
   useEffect(() => { autoModeRef.current = autoMode; }, [autoMode]);
 
   /* =========================================================
-   * 🔒 LOCK BODY (Empêche le fond de bouger)
+   * 🔒 LOCK BODY (Indispensable pour iPhone 8 / iOS)
    * ========================================================= */
   useEffect(() => {
+    // 1. Sauvegarde position actuelle
     const scrollY = window.scrollY;
+    
+    // 2. Fige le body pour empêcher le fond de bouger
     document.body.classList.add("viewer-open");
     document.body.style.top = `-${scrollY}px`;
 
+    // 3. Nettoyage à la fermeture
     return () => {
       document.body.classList.remove("viewer-open");
       document.body.style.top = "";
@@ -80,87 +84,67 @@ export default function ProjectViewer({
       a.onended = () => {
         stopAudio();
         if (autoModeRef.current) {
-          handleNext(); // Passage automatique au suivant
+          const next = currentIndex + 1;
+          if (next < projects.length) {
+            setCurrentIndex(next);
+            containerRef.current?.scrollTo({ left: next * window.innerWidth, behavior: "smooth" });
+          } else { setAutoMode(false); }
         }
       };
       await a.play();
     } catch (e) { setAudio({ loading: false, playing: false, projectId: null }); }
   };
 
-  // ✅ NAVIGATION MANUELLE (Remplace le swipe)
-  const handleNext = () => {
-    if (currentIndex < projects.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    } else {
-      setAutoMode(false); // Fin de la liste
+  // Synchronisation initiale du scroll
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ left: index * window.innerWidth, behavior: "instant" });
     }
-  };
-
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1);
-    }
-  };
-
-  // Le projet actif
-  const currentProject = projects[currentIndex];
-
-  if (!currentProject) return null;
+  }, [index]);
 
   return (
-    // ✅ CONTAINER FIXE : Aucune overflow horizontal possible
-    <div className="fixed inset-0 z-50 bg-black w-screen h-[100dvh] overflow-hidden flex flex-col">
+    // z-50 pour être au dessus. overscroll-none pour tuer l'élastique global.
+    <div className="fixed inset-0 z-50 bg-black overscroll-none">
       
-      {/* HEADER DE NAVIGATION (Flèches + Fermer) */}
-      <div className="absolute top-0 left-0 right-0 z-[60] flex items-center justify-between p-4 pointer-events-none">
-        
-        {/* Flèches de navigation (Pointer events auto pour qu'elles soient cliquables) */}
-        <div className="flex gap-4 pointer-events-auto">
-          <button 
-            onClick={handlePrev}
-            disabled={currentIndex === 0}
-            className="text-white/50 hover:text-white disabled:opacity-20 text-2xl font-bold bg-black/20 p-2 rounded-full backdrop-blur-sm"
-          >
-            ←
-          </button>
-          <button 
-            onClick={handleNext}
-            disabled={currentIndex === projects.length - 1}
-            className="text-white/50 hover:text-white disabled:opacity-20 text-2xl font-bold bg-black/20 p-2 rounded-full backdrop-blur-sm"
-          >
-            →
-          </button>
-        </div>
-
-        <button 
-          onClick={onClose} 
-          className="text-white/50 hover:text-white font-bold bg-black/20 px-3 py-1 rounded-full backdrop-blur-sm pointer-events-auto"
-        >
-          Fermer ✕
-        </button>
-      </div>
-
-      {/* ✅ UN SEUL PROJET RENDU À LA FOIS */}
-      {/* w-full et h-full : Prend toute la place. Le scroll vertical est géré DANS ProjectSlide */}
-      <div className="w-full h-full">
-        <ProjectSlide
-          key={currentProject.id} // Clé importante pour forcer le re-render propre
-          project={currentProject}
-          onUpdate={onUpdate}
-          onDelete={(id: string) => { stopAudio(); onDelete(id); }}
-          availableTypes={availableTypes}
-          availableCategories={availableCategories}
-          audio={audio}
-          onPlay={playProjectTTS}
-          onStop={stopAudio}
-          autoMode={autoMode}
-          onToggleAuto={(payload: any) => {
-            if (!payload.enabled) return stopAudio();
-            setAutoMode(true);
-            playProjectTTS(payload.text, payload.projectId);
-          }}
-          slideIndex={currentIndex}
-        />
+      <button onClick={onClose} className="absolute right-8 top-8 z-50 text-white/50 hover:text-white font-bold">Fermer ✕</button>
+      
+      {/* ✅ LE RETOUR DU CARROUSEL 
+        - overflow-x-auto : Permet le swipe horizontal
+        - snap-x snap-mandatory : Force l'arrêt sur chaque slide
+        - overscroll-x-contain : Empêche le swipe de faire bouger la page derrière (Crucial iOS)
+        - touch-action: pan-x pan-y : Autorise le doigt à bouger dans les deux sens
+      */}
+      <div 
+        ref={containerRef} 
+        className="flex h-full w-full overflow-x-auto snap-x snap-mandatory overscroll-x-contain touch-pan-x touch-pan-y" 
+        style={{ scrollbarWidth: "none" }}
+        onScroll={(e) => {
+          // Mise à jour simple de l'index courant pour le mode auto
+          const newIndex = Math.round(e.currentTarget.scrollLeft / window.innerWidth);
+          if (newIndex !== currentIndex) setCurrentIndex(newIndex);
+        }}
+      >
+        {projects.map((p, i) => (
+          <section key={p.id} className="h-full w-screen shrink-0 snap-center bg-neutral-950 text-white">
+            <ProjectSlide
+              project={p}
+              onUpdate={onUpdate}
+              onDelete={(id: string) => { stopAudio(); onDelete(id); }}
+              availableTypes={availableTypes}
+              availableCategories={availableCategories}
+              audio={audio}
+              onPlay={playProjectTTS}
+              onStop={stopAudio}
+              autoMode={autoMode}
+              onToggleAuto={(payload: any) => {
+                if (!payload.enabled) return stopAudio();
+                setAutoMode(true);
+                playProjectTTS(payload.text, payload.projectId);
+              }}
+              slideIndex={i}
+            />
+          </section>
+        ))}
       </div>
     </div>
   );

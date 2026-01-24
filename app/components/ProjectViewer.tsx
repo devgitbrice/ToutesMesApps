@@ -35,17 +35,24 @@ export default function ProjectViewer({
   useEffect(() => { autoModeRef.current = autoMode; }, [autoMode]);
 
   /* =========================================================
-   * ✅ LOCK BODY SCROLL (Correction iOS)
+   * ✅ LOCK ULTIME POUR iOS (La méthode "Position Fixed")
    * ========================================================= */
   useEffect(() => {
-    // 1. On fige le body quand le viewer s'ouvre
-    document.body.classList.add("viewer-open");
-    document.body.style.overflow = "hidden"; // Sécurité double
+    // 1. On mémorise où était l'utilisateur dans la page
+    const scrollY = window.scrollY;
 
-    // 2. Nettoyage quand on ferme
+    // 2. On fige le body (classe définie dans globals.css avec position: fixed)
+    document.body.classList.add("viewer-open");
+    
+    // 3. IMPORTANT : On compense le décalage du "fixed" pour ne pas remonter tout en haut visuellement
+    document.body.style.top = `-${scrollY}px`;
+
+    // 4. Nettoyage à la fermeture
     return () => {
       document.body.classList.remove("viewer-open");
-      document.body.style.overflow = "";
+      document.body.style.top = "";
+      // 5. On remet l'utilisateur exactement où il était
+      window.scrollTo(0, scrollY);
     };
   }, []);
 
@@ -96,21 +103,18 @@ export default function ProjectViewer({
   }, [index]);
 
   return (
-    // ✅ CORRECTION CSS SUR LE CONTENEUR PRINCIPAL
-    // 1. z-50 : Au dessus de tout
-    // 2. touch-action: none : Empêche le scroll de fond qui "transperce"
-    // 3. overscroll-behavior: none : Empêche le rebond élastique de la page entière
+    // ✅ CONTENEUR PRINCIPAL : Bloque tout effet élastique global
     <div className="fixed inset-0 z-50 bg-black overscroll-none touch-none">
       
       <button onClick={onClose} className="absolute right-8 top-8 z-50 text-white/50 hover:text-white font-bold">Fermer ✕</button>
       
-      {/* ✅ CORRECTION SUR LE SCROLLER 
-         1. touch-pan-x touch-pan-y : On réactive le scroll ICI pour pouvoir slider
-         2. overscroll-x-contain : Le swipe s'arrête net aux bords (pas de retour navigateur)
+      {/* ✅ SCROLLER HORIZONTAL : 
+          - touch-pan-x : AUTORISE le doigt à bouger horizontalement (pour changer de slide)
+          - overscroll-x-contain : EMPÊCHE le doigt de faire bouger la page du dessous quand on arrive au bout
       */}
       <div 
         ref={containerRef} 
-        className="flex h-full w-full overflow-x-auto snap-x snap-mandatory touch-pan-x touch-pan-y overscroll-x-contain" 
+        className="flex h-full w-full overflow-x-auto snap-x snap-mandatory touch-pan-x overscroll-x-contain" 
         style={{ scrollbarWidth: "none" }}
       >
         {projects.map((p, i) => (

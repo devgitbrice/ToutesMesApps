@@ -5,13 +5,13 @@
   --foreground: #171717;
 }
 
-/* ✅ 1. Configuration HTML globale */
+/* ✅ 1. SÉCURITÉ GLOBALE (HTML) */
 html {
-  /* Empêche le "swipe back" (page précédente) et le rebond élastique horizontal */
+  /* Empêche le rebond élastique horizontal sur tout le site */
   overscroll-behavior-x: none;
-  /* S'assure que le document ne dépasse pas horizontalement */
-  max-width: 100vw;
+  /* Coupe tout dépassement */
   overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body {
@@ -19,29 +19,30 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 
-  /* ✅ 2. Verrouillage Vertical Strict (iOS) */
+  /* ✅ 2. DASHBOARD : SCROLL VERTICAL STRICT */
   width: 100%;
+  min-height: 100vh;
   position: relative;
-  overflow-x: hidden; /* Coupe tout ce qui dépasse à droite */
-  overscroll-behavior-x: none; /* Bloque le geste horizontal natif */
-  touch-action: pan-y; /* Indique au navigateur : "On ne bouge qu'en vertical" */
-}
-
-/* ✅ 3. FIX iOS / iPhone 8 : Force la hauteur réelle visible */
-/* Corrige le problème où la barre d'adresse cache le bas de l'écran */
-@supports (-webkit-touch-callout: none) {
-  .h-screen {
-    height: -webkit-fill-available;
-  }
+  overflow-x: hidden;
   
-  /* Applique aussi au body si nécessaire pour le fullscreen */
-  body {
-    min-height: -webkit-fill-available;
-  }
+  /* C'est la commande magique pour l'accueil : */
+  /* Ignore les gestes horizontaux, n'autorise que le vertical */
+  touch-action: pan-y; 
+  overscroll-behavior-x: none;
 }
 
-/* Empêche le scroll quand le viewer fullscreen est ouvert */
+/* ✅ 3. FIX iPhone 8 (Barre d'adresse) */
+@supports (-webkit-touch-callout: none) {
+  .h-screen { height: -webkit-fill-available; }
+  body { min-height: -webkit-fill-available; }
+}
+
+/* ✅ 4. ETAT "VIEWER OUVERT" (Lock total du fond) */
+/* Cette classe est ajoutée par JS quand tu ouvres un projet */
 body.viewer-open {
+  position: fixed; /* Le seul moyen de figer totalement iOS */
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  touch-action: none; /* Bloque tout mouvement quand le viewer est ouvert */
+  touch-action: none; /* Désactive tout scroll sur le body */
 }

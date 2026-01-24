@@ -1,96 +1,124 @@
 import { NextResponse } from "next/server";
-import Airtable from "airtable";
+import { createClient } from "@supabase/supabase-js";
 
-if (!process.env.AIRTABLE_API_KEY || !process.env.AIRTABLE_BASE_ID) {
-  console.error("❌ ERREUR CRITIQUE : Clés Airtable manquantes dans .env.local");
-}
+// Initialisation Supabase
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(
-  process.env.AIRTABLE_BASE_ID!
-);
+export const dynamic = 'force-dynamic';
 
-// --- HELPERS ---
-const asString = (v: unknown, fallback = "") => typeof v === "string" ? v : (v == null ? fallback : String(v));
-const asBool = (v: unknown, fallback = false) => {
-  if (typeof v === "boolean") return v;
-  if (v === 1 || v === "1" || v === "true") return true;
-  return fallback;
-};
-const asStringArray = (v: unknown, fallback: string[] = []) => Array.isArray(v) ? v.filter((x) => typeof x === "string") as string[] : fallback;
-
-const normalizeTypeOut = (v: unknown): "pro" | "perso" => asString(v, "Perso").trim().toLowerCase().includes("pro") ? "pro" : "perso";
-const normalizeTypeIn = (v: unknown): "Pro" | "Perso" => asString(v, "Perso").trim().toLowerCase() === "pro" ? "Pro" : "Perso";
-const normalizeCategoriesOut = (v: unknown): string[] => asStringArray(v, []).map((c) => c.trim().toLowerCase()).filter(Boolean);
-const normalizeCategoriesIn = (v: unknown): string[] => asStringArray(v, []).map((c) => c.trim()).filter(Boolean);
-
-// GET : Récupérer
+// --- GET ---
 export async function GET() {
-  try {
-    const records = await base("Projects").select({ view: "Grid view", sort: [{ field: "Created", direction: "desc" }] }).all();
-    const projects = records.map((record) => ({
-      id: record.id,
-      title: asString(record.get("Title"), "Sans titre"),
-      description: asString(record.get("Description"), ""),
-      type: normalizeTypeOut(record.get("Type")),
-      categories: normalizeCategoriesOut(record.get("Categories")),
-      githubLink: asString(record.get("GithubLink"), ""),
-      siteLink: asString(record.get("SiteLink"), ""),
-      favorite: asBool(record.get("favorite"), false),
-    }));
-    return NextResponse.json(projects);
-  } catch (error) {
-    return NextResponse.json({ error: "Erreur chargement" }, { status: 500 });
-  }
+  // ✅ On appelle la table "toutesmesapps"
+  const { data, error } = await supabase
+    .from("toutesmesapps")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Mapping BDD (snake_case) -> App (camelCase)
+  const projects = data.map((p) => ({
+    id: p.id,
+    title: p.title || "Sans titre",
+    description: p.description || "",
+    type: p.type || "perso",
+    categories: p.categories || [],
+    favorite: p.favorite || false,
+    
+    githubLink: p.github_link || "",
+    siteLink: p.site_link || "",
+    geminiLink: p.gemini_link || "",
+    vercelLink: p.vercel_link || "",
+
+    logs: p.logs || [],
+    todos: p.todos || [],
+
+    images: p.images || [],
+    tags: p.tags || [],
+    year: p.year
+  }));
+
+  return NextResponse.json(projects);
 }
 
-// PUT : Mettre à jour
+// --- PUT ---
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const id = asString(body?.id);
-    if (!id || id.startsWith("temp-")) return NextResponse.json({ error: "ID invalide" }, { status: 400 });
+    const { id, ...updates } = body;
 
-    const fields: Record<string, any> = {};
-    if ("title" in body) fields.Title = asString(body.title);
-    if ("description" in body) fields.Description = asString(body.description);
-    if ("type" in body) fields.Type = normalizeTypeIn(body.type);
-    if ("categories" in body) fields.Categories = normalizeCategoriesIn(body.categories);
-    if ("githubLink" in body) fields.GithubLink = asString(body.githubLink);
-    if ("siteLink" in body) fields.SiteLink = asString(body.siteLink);
-    if ("favorite" in body) fields.favorite = asBool(body.favorite);
+    if (!id) return NextResponse.json({ error: "ID manquant" }, { status: 400 });
 
-    await base("Projects").update([{ id, fields }]);
+    const toUpdate: any = {};
+    if (updates.title !== undefined) toUpdate.title = updates.title;
+    if (updates.description !== undefined) toUpdate.description = updates.description;
+    if (updates.type !== undefined) toUpdate.type = updates.type;
+    if (updates.categories !== undefined) toUpdate.categories = updates.categories;
+    if (updates.favorite !== undefined) toUpdate.favorite = updates.favorite;
+    
+    // Mapping Liens
+    if (updates.githubLink !== undefined) toUpdate.github_link = updates.githubLink;
+    if (updates.siteLink !== undefined) toUpdate.site_link = updates.siteLink;
+    if (updates.geminiLink !== undefined) toUpdate.gemini_link = updates.geminiLink;
+    if (updates.vercelLink !== undefined) toUpdate.vercel_link = updates.vercelLink;
+
+    // Mapping JSON
+    if (updates.logs !== undefined) toUpdate.logs = updates.logs;
+    if (updates.todos !== undefined) toUpdate.todos = updates.todos;
+
+    // ✅ Update sur "toutesmesapps"
+    const { error } = await supabase
+      .from("toutesmesapps")
+      .update(toUpdate)
+      .eq("id", id);
+
+    if (error) throw error;
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ error: error?.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// POST : Créer
+// --- POST ---
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const created = await base("Projects").create([{
-      fields: {
-        Title: asString(body?.title, "Nouveau Projet"),
-        Description: asString(body?.description, ""),
-        Type: normalizeTypeIn(body?.type),
-        Categories: normalizeCategoriesIn(body?.categories),
-        favorite: asBool(body?.favorite, false),
-      }
-    }]);
-    return NextResponse.json({ id: created[0].id });
-  } catch (error) {
-    return NextResponse.json({ error: "Erreur création" }, { status: 500 });
+    
+    // ✅ Insert dans "toutesmesapps"
+    const { data, error } = await supabase
+      .from("toutesmesapps")
+      .insert([{
+        title: body.title || "Nouveau Projet",
+        description: body.description || "",
+        type: body.type || "perso",
+        categories: body.categories || [],
+        favorite: body.favorite || false,
+        logs: [],
+        todos: []
+      }])
+      .select();
+
+    if (error) throw error;
+
+    return NextResponse.json({ id: data[0].id });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// ✅ NOUVEAU : DELETE
+// --- DELETE ---
 export async function DELETE(request: Request) {
   try {
     const { id } = await request.json();
     if (!id) return NextResponse.json({ error: "ID manquant" }, { status: 400 });
-    await base("Projects").destroy(id);
+
+    // ✅ Delete dans "toutesmesapps"
+    const { error } = await supabase.from("toutesmesapps").delete().eq("id", id);
+    if (error) throw error;
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

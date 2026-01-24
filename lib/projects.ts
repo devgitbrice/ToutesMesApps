@@ -11,6 +11,22 @@ export const PROJECT_CATEGORIES = ["formation", "appartement"] as const;
 export type ProjectCategory = (typeof PROJECT_CATEGORIES)[number];
 
 /** =====================
+ * ✅ NOUVEAUX TYPES POUR LE DASHBOARD
+ * ===================== */
+
+export type ProjectLog = {
+  id: string;
+  date: string; // Format ISO
+  content: string;
+};
+
+export type ProjectTodo = {
+  id: string;
+  text: string;
+  done: boolean;
+};
+
+/** =====================
  * Helpers runtime (safe)
  * ===================== */
 
@@ -49,17 +65,22 @@ export type Project = {
   type: ProjectType;
   categories: ProjectCategory[];
 
-  // ✅ Favori (Airtable checkbox)
+  // ✅ Favori
   favorite?: boolean;
 
   // Liens (optionnels) – anciennes versions
   githubUrl?: string;
   websiteUrl?: string;
 
-  // Liens (optionnels) – versions Airtable
+  // Liens (optionnels) – versions actuelles
   githubLink?: string;
   siteLink?: string;
-  geminiLink?: string; // ✅ Ajout du champ Gemini
+  geminiLink?: string; // ✅ Champ Gemini
+  vercelLink?: string; // ✅ Champ Vercel
+
+  // ✅ NOUVELLES COLONNES (JSON)
+  logs?: ProjectLog[];
+  todos?: ProjectTodo[];
 
   // UI / viewer
   images?: string[];
@@ -88,6 +109,8 @@ export const PROJECTS: Project[] = [
       "/projects/toutesmesapps/2.png",
     ],
     favorite: false,
+    logs: [], // Init vide
+    todos: [] // Init vide
   },
   {
     id: "note-speak-ai",
@@ -99,6 +122,8 @@ export const PROJECTS: Project[] = [
     tags: ["AI", "Speech", "Next.js"],
     year: 2024,
     favorite: false,
+    logs: [],
+    todos: []
   },
   {
     id: "gestion-appartement",
@@ -111,6 +136,8 @@ export const PROJECTS: Project[] = [
     tags: ["Dashboard", "CRUD"],
     year: 2023,
     favorite: false,
+    logs: [],
+    todos: []
   },
   {
     id: "formation-web",
@@ -122,5 +149,7 @@ export const PROJECTS: Project[] = [
     tags: ["Formation", "Frontend"],
     year: 2022,
     favorite: false,
+    logs: [],
+    todos: []
   },
 ];

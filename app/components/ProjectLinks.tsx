@@ -6,9 +6,10 @@ type Props = {
   github: string; setGithub: (v: string) => void;
   site: string; setSite: (v: string) => void;
   gemini: string; setGemini: (v: string) => void;
+  vercel: string; setVercel: (v: string) => void; // ✅ Ajout Prop
 };
 
-export default function ProjectLinks({ github, setGithub, site, setSite, gemini, setGemini }: Props) {
+export default function ProjectLinks({ github, setGithub, site, setSite, gemini, setGemini, vercel, setVercel }: Props) {
   const handleGo = (url: string) => {
     const target = normalizeUrl(url);
     if (target) window.open(target, "_blank");
@@ -18,6 +19,7 @@ export default function ProjectLinks({ github, setGithub, site, setSite, gemini,
     { label: "GITHUB", val: github, set: setGithub, ph: "github.com/..." },
     { label: "WEB", val: site, set: setSite, ph: "monsite.com" },
     { label: "GEMINI", val: gemini, set: setGemini, ph: "gemini.google..." },
+    { label: "VERCEL", val: vercel, set: setVercel, ph: "app.vercel..." }, // ✅ Ajout Champ
   ];
 
   return (

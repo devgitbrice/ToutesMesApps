@@ -6,7 +6,10 @@ import Filters, { type FiltersState } from "./components/Filters";
 import ProjectCard from "./components/ProjectCard";
 import ProjectViewer from "./components/ProjectViewer";
 
-// ✅ TYPES + HELPERS OFFICIELS
+// ✅ 1. IMPORT DU HOOK IOS
+import { useIosScrollLock } from "@/hooks/useIosScrollLock";
+
+// ✅ TYPES + HELPERS
 import type { Project, ProjectCategory, ProjectType } from "@/lib/projects";
 import {
   toProjectType,
@@ -15,7 +18,6 @@ import {
   PROJECT_CATEGORIES,
 } from "@/lib/projects";
 
-// ✅ CORRECTION CRITIQUE POUR VERCEL
 const DEFAULT_FILTERS: FiltersState = {
   types: {},
   categories: {},
@@ -24,16 +26,19 @@ const DEFAULT_FILTERS: FiltersState = {
 };
 
 export default function Page() {
+  // ✅ 2. ACTIVATION DU VERROUILLAGE SCROLL (iPhone 8 & autres)
+  useIosScrollLock();
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  // ✅ Mode nuit par défaut
+  // Mode nuit par défaut
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // ✅ Initialisation des filtres
+  // Initialisation des filtres
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS);
 
   /* =====================
@@ -117,7 +122,7 @@ export default function Page() {
 
     } catch (err) {
       console.error("Erreur création projet:", err);
-      alert("Erreur lors de la création du projet dans Airtable");
+      alert("Erreur lors de la création du projet dans Supabase");
     } finally {
       setIsCreating(false);
     }
@@ -137,18 +142,15 @@ export default function Page() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        console.warn("⚠️ Airtable refuse la mise à jour :", errorData);
+        console.warn("⚠️ Supabase refuse la mise à jour :", errorData);
       }
     } catch (err) {
       console.error("❌ Erreur réseau :", err);
     }
   };
 
-  // ✅ NOUVELLE ACTION : Suppression
   const handleDeleteProject = (id: string) => {
-    // 1. On retire le projet de la liste locale
     setProjects((prev) => prev.filter((p) => p.id !== id));
-    // 2. On ferme le viewer
     setActiveIndex(null);
   };
 
@@ -219,7 +221,7 @@ export default function Page() {
 
             <div>
               <h1 className="text-3xl font-bold tracking-tight">ToutesMesApps</h1>
-              <p className="text-sm opacity-50 font-medium">Dashboard Airtable</p>
+              <p className="text-sm opacity-50 font-medium">Dashboard Supabase</p>
             </div>
             
             <button
@@ -271,7 +273,7 @@ export default function Page() {
           index={activeIndex}
           onClose={() => setActiveIndex(null)}
           onUpdate={handleUpdateProject}
-          onDelete={handleDeleteProject} // ✅ Prop ajoutée
+          onDelete={handleDeleteProject}
           availableTypes={availableTypes}
           availableCategories={availableCategories}
         />

@@ -13,6 +13,9 @@ export default function ProjectTodos({ todos = [], onChange }: Props) {
   
   // État pour suivre l'élément en cours de déplacement
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  
+  // État pour l'animation de copie (stocke l'ID de la tâche copiée)
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleAdd = () => {
     if (!inputValue.trim()) return;
@@ -21,7 +24,6 @@ export default function ProjectTodos({ todos = [], onChange }: Props) {
       text: inputValue,
       done: false,
     };
-    // Ajout en haut de liste
     onChange([newTodo, ...todos]);
     setInputValue("");
   };
@@ -34,16 +36,27 @@ export default function ProjectTodos({ todos = [], onChange }: Props) {
     onChange(todos.map((t) => (t.id === id ? { ...t, text: newText } : t)));
   };
 
-  // --- LOGIQUE DRAG & DROP ---
+  // --- LOGIQUE COPIE PRESSE-PAPIERS ---
+  const copyToClipboard = async (text: string, id: string) => {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      // On remet l'icône normale après 2 secondes
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error("Erreur de copie", err);
+    }
+  };
 
+  // --- LOGIQUE DRAG & DROP ---
   const onDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = "move";
-    // Petite astuce pour cacher l'image fantôme si besoin, ou laisser par défaut
   };
 
   const onDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault(); // Nécessaire pour autoriser le drop
+    e.preventDefault();
     e.dataTransfer.dropEffect = "move";
   };
 
@@ -51,7 +64,6 @@ export default function ProjectTodos({ todos = [], onChange }: Props) {
     e.preventDefault();
     if (draggedIndex === null || draggedIndex === dropIndex) return;
 
-    // Réorganisation du tableau
     const updatedTodos = [...todos];
     const [movedItem] = updatedTodos.splice(draggedIndex, 1);
     updatedTodos.splice(dropIndex, 0, movedItem);
@@ -91,11 +103,10 @@ export default function ProjectTodos({ todos = [], onChange }: Props) {
         )}
 
         {todos.map((todo, index) => {
-          // Si c'est le premier élément (index 0), style rouge. Sinon style normal.
           const isFirst = index === 0;
           const bgClass = isFirst 
-            ? "bg-red-600 border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.4)]" // Style ROUGE VIF
-            : "bg-black/20 border-white/5 hover:border-white/10"; // Style normal
+            ? "bg-red-600 border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.4)]"
+            : "bg-black/20 border-white/5 hover:border-white/10";
 
           return (
             <div
@@ -122,11 +133,23 @@ export default function ProjectTodos({ todos = [], onChange }: Props) {
                 value={todo.text}
                 onChange={(e) => handleUpdate(todo.id, e.target.value)}
                 className="flex-1 bg-transparent text-sm text-white font-medium outline-none placeholder-white/30"
-                // On empêche le drag si on clique dans l'input pour écrire
                 onMouseDown={(e) => e.stopPropagation()} 
               />
               
-              {/* Petite poignée visuelle pour le drag */}
+              {/* ✅ BOUTON COPIER */}
+              <button
+                onClick={() => copyToClipboard(todo.text, todo.id)}
+                title="Copier le texte"
+                className="text-white/40 hover:text-white transition-colors p-1"
+              >
+                {copiedId === todo.id ? (
+                  <span className="text-green-400 font-bold text-xs">OK</span>
+                ) : (
+                  <span className="text-xs">📋</span>
+                )}
+              </button>
+
+              {/* Poignée Drag */}
               <span className="text-white/20 text-xs">☰</span>
             </div>
           );

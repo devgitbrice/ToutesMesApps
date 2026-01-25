@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react"; // ✅ Import de useState
 import type { ProjectLog } from "@/lib/projects";
 
 type Props = {
@@ -9,13 +10,15 @@ type Props = {
 
 export default function ProjectLogs({ logs = [], onChange }: Props) {
   
+  // ✅ État pour l'animation de copie
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
   const handleAdd = () => {
     const newLog: ProjectLog = {
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
       content: ""
     };
-    // Ajout au début (plus récent en haut)
     onChange([newLog, ...logs]);
   };
 
@@ -32,15 +35,25 @@ export default function ProjectLogs({ logs = [], onChange }: Props) {
     }
   };
 
-  // Gestion des touches : Entrée pour valider, Shift+Entrée pour ligne suivante
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault(); // Empêche le saut de ligne
-      e.currentTarget.blur(); // "Valide" en sortant du champ
+  // ✅ LOGIQUE COPIE PRESSE-PAPIERS
+  const copyToClipboard = async (text: string, id: string) => {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error("Erreur de copie", err);
     }
   };
 
-  // Formatage date simple (JJ/MM/AAAA)
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      e.currentTarget.blur();
+    }
+  };
+
   const formatDate = (isoString: string) => {
     try {
       return new Date(isoString).toLocaleDateString("fr-FR", { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -69,15 +82,35 @@ export default function ProjectLogs({ logs = [], onChange }: Props) {
 
         {logs.map((log) => (
           <div key={log.id} className="relative group bg-black/20 p-3 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+            
+            {/* Barre d'actions (Date + Copier + Supprimer) */}
             <div className="flex justify-between items-center mb-2">
               <span className="text-[10px] font-mono text-blue-400">{formatDate(log.date)}</span>
-              <button 
-                onClick={() => deleteLog(log.id)}
-                className="opacity-0 group-hover:opacity-100 text-[10px] text-red-500 hover:text-red-400 transition-opacity"
-              >
-                SUPP
-              </button>
+              
+              <div className="flex items-center gap-2">
+                {/* ✅ BOUTON COPIER */}
+                <button
+                  onClick={() => copyToClipboard(log.content, log.id)}
+                  title="Copier la note"
+                  className="text-white/40 hover:text-white transition-colors"
+                >
+                  {copiedId === log.id ? (
+                    <span className="text-green-400 font-bold text-[10px]">OK</span>
+                  ) : (
+                    <span className="text-[10px]">📋</span>
+                  )}
+                </button>
+
+                {/* Bouton Supprimer */}
+                <button 
+                  onClick={() => deleteLog(log.id)}
+                  className="opacity-0 group-hover:opacity-100 text-[10px] text-red-500 hover:text-red-400 transition-opacity"
+                >
+                  SUPP
+                </button>
+              </div>
             </div>
+
             <textarea
               value={log.content}
               onChange={(e) => updateLog(log.id, e.target.value)}

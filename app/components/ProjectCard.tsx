@@ -5,7 +5,7 @@ import type { Project } from "@/lib/projects";
 type Props = {
   project: Project;
   onClick: () => void;
-  onToggleFavorite?: (e: React.MouseEvent) => void; // ✅ Ajouté pour gérer le clic étoile
+  onToggleFavorite?: (e: React.MouseEvent) => void;
   isDarkMode: boolean;
 };
 
@@ -16,15 +16,15 @@ const truncate30 = (s?: string) => {
 
 export default function ProjectCard({ project, onClick, onToggleFavorite, isDarkMode }: Props) {
   // Styles dynamiques
+  // J'ai remplacé 'hover:border-slate-700' et 'hover:border-neutral-300' par 'hover:border-green-500'
   const cardClasses = isDarkMode
-    ? "group relative cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm transition hover:shadow-md hover:border-slate-700"
-    : "group relative cursor-pointer rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:shadow-md hover:border-neutral-300";
+    ? "group relative cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm transition hover:shadow-md hover:border-green-500"
+    : "group relative cursor-pointer rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:shadow-md hover:border-green-500";
 
   const titleClasses = isDarkMode ? "text-white" : "text-neutral-900";
   const descClasses = isDarkMode ? "text-slate-300" : "text-neutral-600";
   const tagBg = isDarkMode ? "bg-slate-800" : "bg-neutral-100";
   const tagText = isDarkMode ? "text-slate-200" : "text-neutral-700";
-  const hintText = isDarkMode ? "text-slate-400" : "text-neutral-500";
 
   return (
     <article onClick={onClick} className={cardClasses}>
@@ -66,12 +66,6 @@ export default function ProjectCard({ project, onClick, onToggleFavorite, isDark
           ))}
         </div>
       )}
-
-      <div className={`mt-4 text-xs font-medium ${hintText}`}>
-        {project.siteLink && "🌐 Ouvrir le site"}
-        {!project.siteLink && project.githubLink && " Voir sur GitHub"}
-        {!project.siteLink && !project.githubLink && "🔍 Voir le projet"}
-      </div>
     </article>
   );
 }

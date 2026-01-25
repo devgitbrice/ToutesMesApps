@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link"; // ✅ 1. Import nécessaire pour le lien
 
 import Filters, { type FiltersState } from "./components/Filters";
 import ProjectCard from "./components/ProjectCard";
 import ProjectViewer from "./components/ProjectViewer";
 
-// ✅ 1. IMPORT DU HOOK IOS
 import { useIosScrollLock } from "@/hooks/useIosScrollLock";
 
-// ✅ TYPES + HELPERS
 import type { Project, ProjectCategory, ProjectType } from "@/lib/projects";
 import {
   toProjectType,
@@ -26,7 +25,6 @@ const DEFAULT_FILTERS: FiltersState = {
 };
 
 export default function Page() {
-  // ✅ 2. ACTIVATION DU VERROUILLAGE SCROLL (iPhone 8 & autres)
   useIosScrollLock();
 
   const [projects, setProjects] = useState<Project[]>([]);
@@ -35,10 +33,7 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Mode nuit par défaut
   const [isDarkMode, setIsDarkMode] = useState(true);
-
-  // Initialisation des filtres
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS);
 
   /* =====================
@@ -86,7 +81,6 @@ export default function Page() {
   /* =====================
    * ACTIONS
    * ===================== */
-
   const handleCreateProject = async () => {
     try {
       setIsCreating(true);
@@ -157,7 +151,6 @@ export default function Page() {
   /* =====================
    * VALEURS DISPONIBLES
    * ===================== */
-  
   const availableTypes = useMemo(() => {
     return PROJECT_TYPES.filter((t) => projects.some((p) => p.type === t));
   }, [projects]);
@@ -207,7 +200,8 @@ export default function Page() {
         
         <header className="mb-12 flex flex-col gap-8 lg:flex-row lg:items-center">
           
-          <div className="flex items-center gap-6 shrink-0">
+          <div className="flex items-center gap-4 shrink-0">
+            {/* BOUTON CRÉER */}
             <button
               onClick={handleCreateProject}
               disabled={isCreating}
@@ -217,7 +211,16 @@ export default function Page() {
               <span>Nouveau Projet</span>
             </button>
 
-            <div className="h-8 w-px bg-current opacity-10" />
+            {/* ✅ 2. BOUTON FULLTODO (Ajouté) */}
+            <Link
+              href="/fulltodo"
+              className="flex items-center gap-2 rounded-full bg-orange-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-orange-500 active:scale-95"
+            >
+              <span>✅</span>
+              <span>FullTodo</span>
+            </Link>
+
+            <div className="h-8 w-px bg-current opacity-10 mx-2" />
 
             <div>
               <h1 className="text-3xl font-bold tracking-tight">ToutesMesApps</h1>

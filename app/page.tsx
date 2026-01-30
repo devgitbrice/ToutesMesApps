@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link"; // ✅ 1. Import nécessaire pour le lien
 
 import Filters, { type FiltersState } from "./components/Filters";
+import FilterSidebar, { type SidebarFiltersState } from "./components/FilterSidebar";
 import ProjectCard from "./components/ProjectCard";
 import ProjectViewer from "./components/ProjectViewer";
 
@@ -21,7 +22,12 @@ const DEFAULT_FILTERS: FiltersState = {
   types: {},
   categories: {},
   favoriteOnly: false,
-  search: "", 
+  search: "",
+};
+
+const DEFAULT_SIDEBAR_FILTERS: SidebarFiltersState = {
+  favoriteOnly: false,
+  categories: {},
 };
 
 export default function Page() {
@@ -35,6 +41,7 @@ export default function Page() {
 
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS);
+  const [sidebarFilters, setSidebarFilters] = useState<SidebarFiltersState>(DEFAULT_SIDEBAR_FILTERS);
 
   /* =====================
    * FETCH PROJECTS
@@ -169,24 +176,32 @@ export default function Page() {
       .filter(([, v]) => v)
       .map(([k]) => k as ProjectType);
 
-    const activeCats = Object.entries(filters.categories)
+    // Combiner les catégories du header et de la sidebar
+    const headerCats = Object.entries(filters.categories)
       .filter(([, v]) => v)
       .map(([k]) => k as ProjectCategory);
+    const sidebarCats = Object.entries(sidebarFilters.categories)
+      .filter(([, v]) => v)
+      .map(([k]) => k as ProjectCategory);
+    const activeCats = [...new Set([...headerCats, ...sidebarCats])];
 
     const searchTerm = (filters.search || "").toLowerCase().trim();
 
+    // Combiner favoriteOnly du header et de la sidebar
+    const favoriteOnly = filters.favoriteOnly || sidebarFilters.favoriteOnly;
+
     return projects.filter((p) => {
       const typeOk = activeTypes.length === 0 || activeTypes.includes(p.type);
-      const catOk = activeCats.length === 0 || activeCats.some((c) => p.categories.includes(c));
-      const favOk = !filters.favoriteOnly || p.favorite === true;
-      
-      const searchOk = !searchTerm || 
-        p.title.toLowerCase().includes(searchTerm) || 
+      const catOk = activeCats.length === 0 || activeCats.some((c) => p.categories.includes(c.toLowerCase() as ProjectCategory));
+      const favOk = !favoriteOnly || p.favorite === true;
+
+      const searchOk = !searchTerm ||
+        p.title.toLowerCase().includes(searchTerm) ||
         (p.description && p.description.toLowerCase().includes(searchTerm));
 
       return typeOk && catOk && favOk && searchOk;
     });
-  }, [projects, filters]);
+  }, [projects, filters, sidebarFilters]);
 
   /* =====================
    * UI
@@ -251,23 +266,38 @@ export default function Page() {
 
         {error && <div className="mb-6 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
-        <main className="w-full">
-          {loading ? (
-            <div className="flex h-64 items-center justify-center opacity-50 italic animate-pulse">Chargement de la collection...</div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {filteredProjects.map((p, i) => (
-                <ProjectCard
-                  key={p.id}
-                  project={p}
-                  isDarkMode={isDarkMode}
-                  onClick={() => setActiveIndex(i)}
-                  onToggleFavorite={() => handleUpdateProject({ ...p, favorite: !p.favorite })}
-                />
-              ))}
-            </div>
-          )}
-        </main>
+        {/* Layout avec sidebar à gauche et grille à droite */}
+        <div className="flex gap-6">
+          {/* Sidebar de filtres */}
+          <FilterSidebar
+            value={sidebarFilters}
+            onChange={setSidebarFilters}
+            availableCategories={availableCategories}
+            isDarkMode={isDarkMode}
+            total={projects.length}
+            shown={filteredProjects.length}
+          />
+
+          {/* Grille principale */}
+          <main className="flex-1 min-w-0">
+            {loading ? (
+              <div className="flex h-64 items-center justify-center opacity-50 italic animate-pulse">Chargement de la collection...</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredProjects.map((p, i) => (
+                  <ProjectCard
+                    key={p.id}
+                    project={p}
+                    isDarkMode={isDarkMode}
+                    onClick={() => setActiveIndex(i)}
+                    onToggleFavorite={() => handleUpdateProject({ ...p, favorite: !p.favorite })}
+                    onEdit={() => setActiveIndex(i)}
+                  />
+                ))}
+              </div>
+            )}
+          </main>
+        </div>
       </div>
 
       {activeIndex !== null && (

@@ -6,6 +6,7 @@ import Link from "next/link"; // ✅ 1. Import nécessaire pour le lien
 import Filters, { type FiltersState } from "./components/Filters";
 import FilterSidebar, { type SidebarFiltersState } from "./components/FilterSidebar";
 import ProjectCard from "./components/ProjectCard";
+import ProjectListTable from "./components/ProjectListTable";
 import ProjectViewer from "./components/ProjectViewer";
 
 import { useIosScrollLock } from "@/hooks/useIosScrollLock";
@@ -40,6 +41,7 @@ export default function Page() {
   const [isCreating, setIsCreating] = useState(false);
 
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS);
   const [sidebarFilters, setSidebarFilters] = useState<SidebarFiltersState>(DEFAULT_SIDEBAR_FILTERS);
 
@@ -249,6 +251,16 @@ export default function Page() {
             >
               {isDarkMode ? "☀️" : "🌙"}
             </button>
+
+            <button
+              onClick={() => setViewMode((v) => (v === "grid" ? "list" : "grid"))}
+              className={`rounded-full border border-current px-3 py-2 text-sm transition-all ${
+                viewMode === "list" ? "opacity-100" : "opacity-40 hover:opacity-100"
+              }`}
+              title={viewMode === "grid" ? "Vue liste" : "Vue grille"}
+            >
+              {viewMode === "grid" ? "☰" : "▦"}
+            </button>
           </div>
 
           <div className="flex-1 w-full overflow-x-auto">
@@ -278,11 +290,11 @@ export default function Page() {
             shown={filteredProjects.length}
           />
 
-          {/* Grille principale */}
+          {/* Contenu principal */}
           <main className="flex-1 min-w-0">
             {loading ? (
               <div className="flex h-64 items-center justify-center opacity-50 italic animate-pulse">Chargement de la collection...</div>
-            ) : (
+            ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredProjects.map((p, i) => (
                   <ProjectCard
@@ -295,6 +307,13 @@ export default function Page() {
                   />
                 ))}
               </div>
+            ) : (
+              <ProjectListTable
+                projects={filteredProjects}
+                isDarkMode={isDarkMode}
+                onEdit={(i) => setActiveIndex(i)}
+                onToggleFavorite={(p) => handleUpdateProject({ ...p, favorite: !p.favorite })}
+              />
             )}
           </main>
         </div>

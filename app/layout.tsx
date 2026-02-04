@@ -1,4 +1,5 @@
 import "./globals.css";
+import QuickLinks from "./components/QuickLinks";
 
 export default function RootLayout({
   children,
@@ -7,7 +8,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body>{children}</body>
+      <body>
+        <QuickLinks />
+        {children}
+      </body>
     </html>
   );
 }

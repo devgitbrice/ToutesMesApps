@@ -10,7 +10,7 @@ const links = [
 
 export default function QuickLinks() {
   return (
-    <nav className="fixed top-4 left-4 z-50 flex flex-col gap-1">
+    <nav className="fixed top-4 right-4 z-50 flex flex-row items-center gap-4">
       {links.map((link) => (
         <a
           key={link.name}

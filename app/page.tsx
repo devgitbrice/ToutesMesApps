@@ -222,7 +222,7 @@ export default function Page() {
             <button
               onClick={handleCreateProject}
               disabled={isCreating}
-              className="flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-full bg-green-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-green-500 active:scale-95 disabled:opacity-50"
             >
               <span className="text-lg leading-none">{isCreating ? "..." : "+"}</span>
               <span>Nouveau Projet</span>

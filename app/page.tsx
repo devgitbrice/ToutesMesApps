@@ -152,9 +152,21 @@ export default function Page() {
     }
   };
 
-  const handleDeleteProject = (id: string) => {
+  const handleDeleteProject = async (id: string) => {
     setProjects((prev) => prev.filter((p) => p.id !== id));
     setActiveIndex(null);
+    try {
+      const res = await fetch("/api/projects", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        console.error("❌ Erreur suppression :", await res.json());
+      }
+    } catch (err) {
+      console.error("❌ Erreur réseau suppression :", err);
+    }
   };
 
   /* =====================
